@@ -1,0 +1,3598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BTC · Smart Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600;700;800;900&display=swap');
+:root {
+  --bg:#05080d;--s1:#080d14;--s2:#0c1420;--border:#162030;--border2:#1e3048;
+  --green:#00e676;--green2:#00ff9d;--red:#ff1744;--red2:#ff5252;
+  --blue:#29b6f6;--yellow:#ffd600;--orange:#ff9100;--text:#ddeeff;--muted:#4a6a88;
+  --mono:'IBM Plex Mono',monospace;--display:'Barlow Condensed',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999;}
+.app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:0 0 70px;}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border2);background:var(--s1);position:sticky;top:0;z-index:100;}
+.header-pair{font-family:var(--display);font-size:20px;font-weight:900;color:#fff;}
+.header-pair span{color:var(--green);}
+.header-sub{font-size:9px;color:var(--muted);margin-top:2px;}
+.live-dot{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--green);}
+.live-dot::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:blink 1.2s infinite;box-shadow:0 0 6px var(--green);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.2;}}
+.update-time{font-size:9px;color:var(--muted);margin-top:3px;text-align:right;}
+
+/* ALERT BUTTON */
+.alert-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;border:1px solid;font-size:10px;font-family:var(--mono);cursor:pointer;transition:all 0.2s;background:transparent;}
+.alert-btn.off{border-color:var(--border2);color:var(--muted);}
+.alert-btn.on{border-color:var(--green);color:var(--green);background:rgba(0,230,118,0.08);}
+
+/* PRICE */
+.price-hero{padding:14px 16px 10px;background:linear-gradient(180deg,var(--s1) 0%,var(--bg) 100%);border-bottom:1px solid var(--border);}
+.price-main{font-family:var(--display);font-size:46px;font-weight:900;letter-spacing:-1px;line-height:1;transition:color 0.3s;}
+.price-main.up{color:var(--green2);}
+.price-main.down{color:var(--red2);}
+.price-main.neutral{color:#fff;}
+.price-change{font-size:13px;font-weight:600;margin-top:3px;}
+.price-change.up{color:var(--green);}
+.price-change.down{color:var(--red);}
+.price-meta{display:flex;gap:14px;margin-top:5px;font-size:10px;color:var(--muted);}
+
+/* CERTAINTY */
+.cert-wrap{padding:12px 16px 8px;}
+.cert-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.cert-title{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+.cert-pct{font-family:var(--display);font-size:30px;font-weight:900;transition:color 0.5s;}
+.cert-pct.high{color:var(--green);}
+.cert-pct.mid{color:var(--yellow);}
+.cert-pct.low{color:var(--red2);}
+.cert-label{font-size:9px;color:var(--muted);margin-top:2px;}
+.cert-bar-bg{height:8px;background:var(--border2);border-radius:4px;overflow:hidden;position:relative;}
+.cert-bar-fill{height:100%;border-radius:4px;transition:width 0.8s ease,background 0.5s;}
+.cert-threshold{position:absolute;left:80%;top:-3px;height:14px;width:2px;background:var(--yellow);}
+.cert-threshold-lbl{position:absolute;left:81%;top:-14px;font-size:8px;color:var(--yellow);}
+
+/* SIGNAL */
+.signal-wrap{padding:0 16px 10px;}
+.signal-box{border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:12px;border:1px solid;transition:all 0.4s;}
+.signal-box.LONG,.signal-box.LONG_WATCH{border-color:var(--green);background:rgba(0,230,118,0.07);}
+.signal-box.SHORT,.signal-box.SHORT_WATCH{border-color:var(--red);background:rgba(255,23,68,0.07);}
+.signal-box.NEUTRAL,.signal-box.WAIT{border-color:var(--border2);background:var(--s2);}
+.signal-box.SPIKE_LONG,.signal-box.SPIKE_SHORT{border-color:var(--orange);background:rgba(255,145,0,0.07);}
+.signal-box.SPIKE_LONG .signal-label,.signal-box.SPIKE_SHORT .signal-label{color:var(--orange);}
+.signal-box.NEAR_HIGH,.signal-box.NEAR_LOW{border-color:var(--yellow);background:rgba(255,204,2,0.07);}
+.signal-box.NEAR_HIGH .signal-label,.signal-box.NEAR_LOW .signal-label{color:var(--yellow);}
+.signal-box.FILTER_15M,.signal-box.FILTER_DIST{border-color:#9c27b0;background:rgba(156,39,176,0.07);}
+.signal-box.FILTER_15M .signal-label,.signal-box.FILTER_DIST .signal-label{color:#ce93d8;}
+.signal-icon{font-size:24px;flex-shrink:0;}
+.signal-label{font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:2px;text-transform:uppercase;}
+.signal-box.LONG .signal-label,.signal-box.LONG_WATCH .signal-label{color:var(--green);}
+.signal-box.SHORT .signal-label,.signal-box.SHORT_WATCH .signal-label{color:var(--red);}
+.signal-box.NEUTRAL .signal-label,.signal-box.WAIT .signal-label{color:var(--muted);}
+.signal-desc{font-size:9px;color:var(--muted);margin-top:2px;line-height:1.5;}
+
+/* THEORIES */
+.theories-wrap{padding:0 16px 10px;}
+.theory-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s2);margin-bottom:5px;transition:all 0.3s;}
+.theory-item.pass{border-color:rgba(0,230,118,0.3);background:rgba(0,230,118,0.04);}
+.theory-item.fail{border-color:rgba(255,23,68,0.2);}
+.theory-check{font-size:12px;flex-shrink:0;width:18px;}
+.theory-body{flex:1;}
+.theory-name{font-size:10px;font-weight:600;letter-spacing:0.3px;}
+.theory-item.pass .theory-name{color:var(--green);}
+.theory-item.fail .theory-name{color:var(--red2);}
+.theory-item.neutral .theory-name{color:var(--muted);}
+.theory-detail{font-size:8px;color:var(--muted);margin-top:1px;}
+.theory-right{text-align:right;flex-shrink:0;}
+.theory-wr{font-size:9px;font-weight:700;}
+.theory-weight{font-size:8px;color:var(--muted);margin-top:1px;}
+
+/* LEVELS */
+.levels-wrap{padding:0 16px 8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.level-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 10px;text-align:center;}
+.level-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+.level-value{font-family:var(--display);font-size:16px;font-weight:700;margin-top:4px;}
+.lv-entry{color:var(--blue);}
+.lv-sl{color:var(--red2);}
+.lv-tp1{color:var(--green);}
+.lv-tp2{color:var(--yellow);}
+.lv-rr{color:var(--orange);}
+.lv-atr{color:var(--blue);}
+.rr-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin:0 16px 12px;}
+.rr-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--yellow));border-radius:2px;transition:width 1s ease;}
+
+/* PERFORMANCE */
+.perf-grid{padding:0 16px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+.perf-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 8px;text-align:center;}
+.perf-label{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+.perf-value{font-family:var(--display);font-size:20px;font-weight:800;margin-top:4px;}
+
+/* SIGNAL LOG */
+.section-title{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);padding:10px 16px 8px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.log-wrap{padding:0 16px;}
+.log-entry{font-size:10px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--s2);margin-bottom:5px;}
+.log-top{display:flex;justify-content:space-between;align-items:center;}
+.log-time{color:var(--muted);font-size:9px;}
+.log-signal{font-family:var(--display);font-size:13px;font-weight:700;}
+.log-signal.bull{color:var(--green);}
+.log-signal.bear{color:var(--red2);}
+.log-detail{font-size:9px;color:var(--muted);margin-top:3px;}
+.log-result{font-size:10px;font-weight:700;margin-top:4px;}
+.log-result.win{color:var(--green);}
+.log-result.loss{color:var(--red2);}
+.log-result.pending{color:var(--yellow);}
+
+/* CHART */
+.chart-wrap{padding:0 16px 10px;}
+.chart-header{display:flex;justify-content:space-between;margin-bottom:6px;font-size:9px;color:var(--muted);}
+.chart-legend{display:flex;gap:10px;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:9px;}
+.legend-line{width:10px;height:2px;border-radius:1px;}
+canvas{width:100%;border-radius:6px;border:1px solid var(--border);display:block;background:var(--s1);}
+
+/* VOL */
+.vol-wrap{padding:0 16px 10px;}
+.vol-bars{display:flex;align-items:flex-end;gap:2px;height:40px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:4px 6px 3px;overflow:hidden;}
+.vol-bar{flex:1;border-radius:2px 2px 0 0;min-width:3px;}
+
+/* STATUS BAR */
+.status-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--s1);border-top:1px solid var(--border2);padding:8px 16px;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--muted);z-index:100;}
+.status-item{text-align:center;}
+.status-val{font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);display:block;}
+
+/* LOADER / ERROR */
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:16px;color:var(--muted);font-size:11px;}
+.loader-ring{width:40px;height:40px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.error-msg{margin:16px;padding:12px 16px;background:rgba(255,23,68,0.08);border:1px solid rgba(255,23,68,0.3);border-radius:8px;font-size:11px;color:var(--red2);display:none;}
+.disclaimer{margin:10px 16px 0;padding:10px;background:var(--s2);border:1px solid var(--border);border-radius:6px;font-size:9px;color:var(--muted);text-align:center;line-height:1.6;}
+
+/* FLASH */
+@keyframes flash{0%{opacity:1;}50%{opacity:0.3;}100%{opacity:1;}}
+.flashing{animation:flash 0.4s 3;}
+
+/* ── PROTOCOLO PANEL ── */
+.proto-wrap{margin:0 16px 12px;border:1px solid var(--border2);border-radius:10px;overflow:hidden;}
+.proto-header{background:linear-gradient(90deg,rgba(0,230,118,0.12),rgba(41,182,246,0.08));padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--border);}
+.proto-header-left{display:flex;align-items:center;gap:8px;}
+.proto-header-title{font-family:var(--display);font-size:14px;font-weight:800;letter-spacing:2px;color:#fff;}
+.proto-header-badge{font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700;letter-spacing:1px;}
+.proto-body{padding:12px 14px;display:none;}
+.proto-body.open{display:block;}
+
+/* Protocolo score */
+.proto-score-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.proto-score-circle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;border:2px solid;flex-shrink:0;}
+.proto-score-num{font-family:var(--display);font-size:20px;font-weight:900;line-height:1;}
+.proto-score-lbl{font-size:7px;letter-spacing:1px;color:var(--muted);}
+.proto-score-detail{flex:1;}
+.proto-score-title{font-size:11px;font-weight:700;margin-bottom:3px;}
+.proto-score-sub{font-size:9px;color:var(--muted);line-height:1.5;}
+.proto-bar-bg{height:5px;background:var(--border2);border-radius:3px;overflow:hidden;margin-top:6px;}
+.proto-bar-fill{height:100%;border-radius:3px;transition:width 0.6s ease;}
+
+/* Checklist mini */
+.proto-checks{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px;}
+.proto-check{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:5px;border:1px solid;font-size:9px;cursor:pointer;transition:all 0.2s;user-select:none;}
+.proto-check.on{border-color:rgba(0,230,118,0.4);background:rgba(0,230,118,0.06);color:var(--green);}
+.proto-check.off{border-color:var(--border);color:var(--muted);}
+.proto-check-icon{font-size:11px;flex-shrink:0;}
+
+/* Niveles del protocolo */
+.proto-levels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+.proto-level{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:7px 8px;text-align:center;}
+.proto-level-lbl{font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
+.proto-level-val{font-family:var(--display);font-size:14px;font-weight:700;margin-top:2px;}
+
+/* Capital input proto */
+.proto-capital-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.proto-capital-row label{font-size:9px;color:var(--muted);letter-spacing:1px;white-space:nowrap;}
+.proto-capital-row input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);padding:6px 10px;font-size:13px;font-family:var(--mono);outline:none;transition:border-color 0.2s;}
+.proto-capital-row input:focus{border-color:var(--green);}
+.proto-risk-btns{display:flex;gap:5px;margin-bottom:10px;}
+.proto-risk-btn{flex:1;padding:5px 2px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--bg);color:var(--muted);transition:all 0.2s;font-family:var(--mono);}
+.proto-risk-btn.active{background:rgba(0,230,118,0.12);border-color:var(--green);color:var(--green);}
+
+/* Botones de ejecución protocolo */
+.proto-exec-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.proto-exec-long{padding:12px;border-radius:7px;border:1px solid var(--green);background:rgba(0,230,118,0.08);color:var(--green);font-family:var(--display);font-size:16px;font-weight:800;letter-spacing:2px;cursor:pointer;transition:all 0.2s;}
+.proto-exec-long:hover:not(:disabled){background:rgba(0,230,118,0.18);}
+.proto-exec-long:disabled{opacity:0.3;cursor:not-allowed;}
+.proto-exec-short{padding:12px;border-radius:7px;border:1px solid var(--red2);background:rgba(255,23,68,0.08);color:var(--red2);font-family:var(--display);font-size:16px;font-weight:800;letter-spacing:2px;cursor:pointer;transition:all 0.2s;}
+.proto-exec-short:hover:not(:disabled){background:rgba(255,23,68,0.18);}
+.proto-exec-short:disabled{opacity:0.3;cursor:not-allowed;}
+.proto-exec-info{font-size:9px;color:var(--muted);text-align:center;line-height:1.6;margin-top:4px;}
+
+/* Confirm modal */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.confirm-overlay.open{display:flex;}
+.confirm-modal{background:var(--s1);border:1px solid var(--border2);border-radius:14px 14px 0 0;padding:20px 18px 30px;width:100%;max-width:480px;animation:slideUp 0.25s ease;}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.confirm-title{font-family:var(--display);font-size:20px;font-weight:900;letter-spacing:2px;margin-bottom:14px;text-align:center;}
+.confirm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.confirm-item{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:9px 10px;text-align:center;}
+.confirm-item-lbl{font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
+.confirm-item-val{font-family:var(--display);font-size:15px;font-weight:700;margin-top:3px;}
+.confirm-warning{background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.3);border-radius:6px;padding:8px 12px;font-size:9px;color:var(--yellow);margin-bottom:14px;line-height:1.6;}
+.confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.confirm-cancel{padding:13px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;letter-spacing:1px;}
+.confirm-ok-long{padding:13px;border-radius:7px;border:1px solid var(--green);background:rgba(0,230,118,0.12);color:var(--green);font-family:var(--display);font-size:16px;font-weight:800;cursor:pointer;letter-spacing:2px;}
+.confirm-ok-short{padding:13px;border-radius:7px;border:1px solid var(--red2);background:rgba(255,23,68,0.12);color:var(--red2);font-family:var(--display);font-size:16px;font-weight:800;cursor:pointer;letter-spacing:2px;}
+.confirm-checklist-warn{background:rgba(255,23,68,0.08);border:1px solid rgba(255,23,68,0.3);border-radius:6px;padding:8px 12px;font-size:9px;color:var(--red2);margin-bottom:12px;line-height:1.6;display:none;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body>
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="api-modal">
+
+<!-- BYBIT MODAL -->
+<div class="modal-overlay" id="bybit-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-title" style="color:#f7931a;">🟠 Conectar Bybit</div>
+    <div class="modal-sub">API Key de Bybit Futures (USDT Perpetual). Solo permisos de trading, sin retiro.</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button class="profile-btn selected" id="bybit-pb-casa"    onclick="bybitProfile='casa';document.getElementById('bybit-pb-casa').className='profile-btn selected'">🏠</button>
+      <button class="profile-btn"          id="bybit-pb-gym"     onclick="bybitProfile='gym'">💪</button>
+      <button class="profile-btn"          id="bybit-pb-trabajo" onclick="bybitProfile='trabajo'">💼</button>
+      <button class="profile-btn"          id="bybit-pb-celular" onclick="bybitProfile='celular'">📱</button>
+    </div>
+    <div class="modal-warn" style="border-color:rgba(247,147,26,0.4);color:#f7931a;">⚠️ Solo permisos de <strong>Futuros/Derivados</strong>. Sin permiso de retiro.</div>
+    <input class="modal-input" id="bybit-inp-key"    type="password" placeholder="API Key de Bybit"    autocomplete="off"/>
+    <input class="modal-input" id="bybit-inp-secret" type="password" placeholder="API Secret de Bybit" autocomplete="off"/>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <label style="font-size:10px;color:var(--muted);letter-spacing:1px;">APALANCAMIENTO</label>
+      <input id="bybit-inp-lev" type="number" value="10" min="1" max="125" style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);padding:6px 10px;font-size:13px;width:80px;font-family:var(--mono);outline:none;">
+      <span style="font-size:10px;color:var(--muted);">x</span>
+    </div>
+    <button class="modal-btn" style="background:rgba(247,147,26,0.15);border-color:#f7931a;color:#f7931a;" onclick="saveBybitKeys()">GUARDAR Y CONECTAR BYBIT</button>
+    <button class="modal-btn danger" onclick="document.getElementById('bybit-modal').style.display='none'">Cancelar</button>
+  </div>
+</div>
+  <div class="modal">
+    <div class="modal-title">🟡 Conectar Binance</div>
+    <div class="modal-sub">Las keys se guardan solo en memoria local del navegador.</div>
+    <div class="modal-warn">⚠️ Solo permisos de <strong>Futuros USD-M</strong>. Sin permiso de retiro.</div>
+    <input class="modal-input" id="inp-key"    type="password" placeholder="API Key"    autocomplete="off" spellcheck="false"/>
+    <input class="modal-input" id="inp-secret" type="password" placeholder="API Secret" autocomplete="off" spellcheck="false"/>
+    <button class="modal-btn" onclick="saveApiKeys()">GUARDAR Y CONECTAR</button>
+    <button class="modal-btn danger" onclick="skipApi()">Solo ver señales (sin operar)</button>
+  </div>
+</div>
+
+<div class="app">
+
+  <div class="header">
+    <div>
+      <div class="header-pair">BTC<span>/USDT</span></div>
+      <div class="header-sub">FUTURES · 7 TEORÍAS AUTO-CORRECTIVAS · 5M · 70%+</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end;">
+          <div class="api-indicator disconnected" id="api-indicator" onclick="document.getElementById('api-modal').style.display='flex'" style="cursor:pointer;">○ BINANCE SIN CONECTAR</div>
+          <div class="api-indicator disconnected" id="bybit-indicator" onclick="document.getElementById('bybit-modal').style.display='flex'" style="cursor:pointer;border-color:rgba(247,147,26,0.3);">○ BYBIT SIN CONECTAR</div>
+        </div>
+    </div>
+    <div style="text-align:right;">
+      <button class="alert-btn off" id="alert-btn" onclick="toggleAlerts()">🔔 Alertas OFF</button>
+      <div class="update-time" id="update-time">Conectando...</div>
+    </div>
+  </div>
+
+  <div class="loader" id="loader"><div class="loader-ring"></div><span>Conectando WebSocket a Binance...</span></div>
+  <div class="error-msg" id="error-msg"></div>
+
+  <div id="main-content" style="display:none;">
+
+    <div class="price-hero">
+      <div class="price-main neutral" id="price-display">$0</div>
+      <div class="price-change" id="price-change">+0.00%</div>
+      <div class="price-meta">
+        <span>MAX: <span id="high24">—</span></span>
+        <span>MIN: <span id="low24">—</span></span>
+        <span>VOL: <span id="vol24">—</span></span>
+      </div>
+    </div>
+
+    <!-- CERTAINTY -->
+    <div class="cert-wrap">
+      <div class="cert-header">
+        <div>
+          <div class="cert-title">Certeza de señal</div>
+          <div class="cert-label" id="cert-label">Calculando...</div>
+        </div>
+        <div class="cert-pct low" id="cert-pct">0%</div>
+      </div>
+      <div style="position:relative;">
+        <div class="cert-bar-bg">
+          <div class="cert-bar-fill" id="cert-fill" style="width:0%;background:var(--red2);"></div>
+          <div class="cert-threshold"></div>
+          <div class="cert-threshold-lbl">80%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEVELS -->
+    <div class="section-title">Niveles operativos</div>
+    <div class="levels-wrap">
+      <div class="level-card"><div class="level-label">Entrada</div><div class="level-value lv-entry" id="lv-entry">—</div></div>
+      <div class="level-card"><div class="level-label">Stop Loss</div><div class="level-value lv-sl" id="lv-sl">—</div></div>
+      <div class="level-card"><div class="level-label">TP1</div><div class="level-value lv-tp1" id="lv-tp1">—</div></div>
+      <div class="level-card"><div class="level-label">TP2</div><div class="level-value lv-tp2" id="lv-tp2">—</div></div>
+      <div class="level-card"><div class="level-label">R/R</div><div class="level-value lv-rr" id="lv-rr">—</div></div>
+      <div class="level-card"><div class="level-label">ATR 5M</div><div class="level-value lv-atr" id="lv-atr">—</div></div>
+    </div>
+    <div class="rr-bar"><div class="rr-fill" id="rr-fill" style="width:0%"></div></div>
+
+    <!-- SIGNAL -->
+    <div class="signal-wrap">
+      <div class="signal-box NEUTRAL" id="signal-box">
+        <div class="signal-icon" id="signal-icon">⏳</div>
+        <div>
+          <div class="signal-label" id="signal-label">ESPERANDO</div>
+          <div class="signal-desc" id="signal-desc">Necesita ≥80% de certeza para activarse</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANUAL EXECUTE -->
+    <div class="manual-exec-wrap" id="manual-exec-wrap">
+      <button class="manual-exec-btn" id="manual-exec-btn" onclick="manualExecute()">
+        ⚡ EJECUTAR AHORA
+      </button>
+      <div class="manual-exec-info" id="manual-exec-info">Señal activa no tomada · Tocá para ejecutar manualmente</div>
+    </div>
+
+    <!-- TRADE OPTIONS -->
+    <div class="options-wrap" id="trade-options-wrap" style="display:none;">
+      <div class="options-title">Opciones de trading</div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">🛡 Colocar SL y TP automático</div>
+          <div class="toggle-sub">Si OFF, los colocás manualmente en Binance</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-sltp" checked onchange="toggleSLTP(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">📊 Permitir múltiples posiciones</div>
+          <div class="toggle-sub">Si ON, abre nuevas posiciones aunque haya una activa</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-multi" onchange="toggleMultiple(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- THRESHOLD SELECTOR -->
+    <div class="threshold-wrap">
+      <div class="threshold-title">
+        <span>Umbral de señal</span>
+        <span class="threshold-current" id="thr-current">70%</span>
+      </div>
+      <div class="threshold-btns">
+        <button class="thr-btn" onclick="setThreshold(65)">65%</button>
+        <button class="thr-btn active" onclick="setThreshold(70)">70%</button>
+        <button class="thr-btn" onclick="setThreshold(75)">75%</button>
+        <button class="thr-btn" onclick="setThreshold(80)">80%</button>
+        <button class="thr-btn" onclick="setThreshold(85)">85%</button>
+        <button class="thr-btn" onclick="setThreshold(90)">90%</button>
+      </div>
+    </div>
+
+    <!-- ══ PANEL PROTOCOLO + EJECUCIÓN ══ -->
+    <div class="proto-wrap" id="proto-wrap">
+      <div class="proto-header" onclick="toggleProto()">
+        <div class="proto-header-left">
+          <span style="font-size:18px;">🛡</span>
+          <span class="proto-header-title">PROTOCOLO</span>
+          <span class="proto-header-badge" id="proto-badge" style="background:rgba(255,23,68,0.15);color:var(--red2);border:1px solid rgba(255,23,68,0.3);">NO OPERABLE</span>
+        </div>
+        <span id="proto-arrow" style="color:var(--muted);font-size:12px;">▼</span>
+      </div>
+      <div class="proto-body" id="proto-body">
+
+        <!-- Score del protocolo -->
+        <div class="proto-score-row">
+          <div class="proto-score-circle" id="proto-circle" style="border-color:var(--red2)">
+            <span class="proto-score-num" id="proto-score-num" style="color:var(--red2)">0</span>
+            <span class="proto-score-lbl">/ 5</span>
+          </div>
+          <div class="proto-score-detail">
+            <div class="proto-score-title" id="proto-score-title" style="color:var(--red2)">Checklist incompleto</div>
+            <div class="proto-score-sub" id="proto-score-sub">Completá los 5 puntos antes de operar</div>
+            <div class="proto-bar-bg"><div class="proto-bar-fill" id="proto-bar" style="width:0%;background:var(--red2)"></div></div>
+          </div>
+        </div>
+
+        <!-- Checklist pre-entrada -->
+        <div class="proto-checks">
+          <div class="proto-check off" id="pc0" onclick="togglePC(0)">
+            <span class="proto-check-icon">📰</span>
+            <span>Sin noticias &lt;60min</span>
+          </div>
+          <div class="proto-check off" id="pc1" onclick="togglePC(1)">
+            <span class="proto-check-icon">📈</span>
+            <span>EMA200 1H confirmada</span>
+          </div>
+          <div class="proto-check off" id="pc2" onclick="togglePC(2)">
+            <span class="proto-check-icon">💰</span>
+            <span>Capital calculado</span>
+          </div>
+          <div class="proto-check off" id="pc3" onclick="togglePC(3)">
+            <span class="proto-check-icon">🧠</span>
+            <span>Enfocado y sin stress</span>
+          </div>
+          <div class="proto-check off" id="pc4" onclick="togglePC(4)" style="grid-column:1/-1">
+            <span class="proto-check-icon">🎯</span>
+            <span>Conozco mi SL y TP antes de entrar</span>
+          </div>
+        </div>
+
+        <!-- Capital + riesgo -->
+        <div class="proto-capital-row">
+          <label>CAPITAL (USDT)</label>
+          <input type="number" id="proto-capital" value="1000" min="10" step="100" oninput="updateProtoLevels()">
+        </div>
+        <div style="font-size:9px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;">RIESGO POR OPERACIÓN</div>
+        <div class="proto-risk-btns">
+          <button class="proto-risk-btn" onclick="setProtoRisk(0.5)">0.5%</button>
+          <button class="proto-risk-btn active" onclick="setProtoRisk(1)">1%</button>
+          <button class="proto-risk-btn" onclick="setProtoRisk(1.5)">1.5%</button>
+          <button class="proto-risk-btn" onclick="setProtoRisk(2)">2%</button>
+        </div>
+
+        <!-- Niveles calculados -->
+        <div class="proto-levels">
+          <div class="proto-level">
+            <div class="proto-level-lbl">Entrada</div>
+            <div class="proto-level-val" id="pl-entry" style="color:var(--blue)">—</div>
+          </div>
+          <div class="proto-level">
+            <div class="proto-level-lbl">Stop Loss</div>
+            <div class="proto-level-val" id="pl-sl" style="color:var(--red2)">—</div>
+          </div>
+          <div class="proto-level">
+            <div class="proto-level-lbl">TP1 (1:2)</div>
+            <div class="proto-level-val" id="pl-tp1" style="color:var(--green)">—</div>
+          </div>
+          <div class="proto-level">
+            <div class="proto-level-lbl">Tamaño</div>
+            <div class="proto-level-val" id="pl-size" style="color:var(--blue)">—</div>
+          </div>
+          <div class="proto-level">
+            <div class="proto-level-lbl">Riesgo $</div>
+            <div class="proto-level-val" id="pl-risk" style="color:var(--red2)">—</div>
+          </div>
+          <div class="proto-level">
+            <div class="proto-level-lbl">R/B</div>
+            <div class="proto-level-val" id="pl-rb" style="color:var(--orange)">—</div>
+          </div>
+        </div>
+
+        <!-- Exchange selector -->
+        <div style="margin-bottom:10px;">
+          <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">EXCHANGE</div>
+          <div style="display:flex;gap:8px;">
+            <button id="exch-binance" onclick="setExchange('binance')"
+              style="flex:1;padding:9px 4px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px;border:1px solid var(--green);background:rgba(0,230,118,0.12);color:var(--green);font-family:var(--mono);transition:all 0.2s;">
+              🟡 BINANCE
+            </button>
+            <button id="exch-bybit" onclick="setExchange('bybit')"
+              style="flex:1;padding:9px 4px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-family:var(--mono);transition:all 0.2s;">
+              🟠 BYBIT
+            </button>
+          </div>
+        </div>
+
+        <!-- Botones de ejecución -->
+        <div class="proto-exec-btns">
+          <button class="proto-exec-long" id="proto-btn-long" onclick="protoExec('BUY')" disabled>
+            ▲ LONG
+          </button>
+          <button class="proto-exec-short" id="proto-btn-short" onclick="protoExec('SELL')" disabled>
+            ▼ SHORT
+          </button>
+        </div>
+        <div class="proto-exec-info" id="proto-exec-info">
+          Completá el checklist y conectá la API para ejecutar
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CONFIRM MODAL -->
+    <div class="confirm-overlay" id="confirm-overlay" onclick="closeConfirm(event)">
+      <div class="confirm-modal">
+        <div class="confirm-title" id="confirm-title">CONFIRMAR ORDEN</div>
+        <div class="confirm-checklist-warn" id="confirm-cl-warn"></div>
+        <div class="confirm-grid">
+          <div class="confirm-item">
+            <div class="confirm-item-lbl">Dirección</div>
+            <div class="confirm-item-val" id="cf-dir">—</div>
+          </div>
+          <div class="confirm-item">
+            <div class="confirm-item-lbl">Entrada</div>
+            <div class="confirm-item-val" id="cf-entry" style="color:var(--blue)">—</div>
+          </div>
+          <div class="confirm-item">
+            <div class="confirm-item-lbl">Tamaño</div>
+            <div class="confirm-item-val" id="cf-size" style="color:var(--blue)">—</div>
+          </div>
+          <div class="confirm-item">
+            <div class="confirm-item-lbl">Stop Loss</div>
+            <div class="confirm-item-val" id="cf-sl" style="color:var(--red2)">—</div>
+          </div>
+          <div class="confirm-item">
+            <div class="confirm-item-lbl">Take Profit 1</div>
+            <div class="confirm-item-val" id="cf-tp1" style="color:var(--green)">—</div>
+          </div>
+          <div class="confirm-item">
+            <div class="confirm-item-lbl">Riesgo USDT</div>
+            <div class="confirm-item-val" id="cf-risk" style="color:var(--red2)">—</div>
+          </div>
+          <div class="confirm-item">
+            <div class="confirm-item-lbl">R/B</div>
+            <div class="confirm-item-val" id="cf-rb" style="color:var(--orange)">—</div>
+          </div>
+          <div class="confirm-item">
+            <div class="confirm-item-lbl">Certeza señal</div>
+            <div class="confirm-item-val" id="cf-cert" style="color:var(--yellow)">—</div>
+          </div>
+        </div>
+        <div class="confirm-warning">⚠️ Esta orden se ejecutará en Binance Futures con dinero real. Verificá los niveles antes de confirmar.</div>
+        <div class="confirm-btns">
+          <button class="confirm-cancel" onclick="closeConfirm()">✕ CANCELAR</button>
+          <button id="confirm-ok-btn" onclick="confirmExec()">⚡ CONFIRMAR</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANUAL TRADE -->
+    <div class="manual-wrap" id="manual-wrap">
+      <div class="manual-title">
+        <span>Orden manual</span>
+        <span id="manual-position-note" style="color:var(--yellow);display:none;">⚠️ Posición ya abierta</span>
+      </div>
+
+      <!-- Size selector -->
+      <div class="manual-size-wrap">
+        <span class="manual-size-label">Exposición:</span>
+        <input class="manual-size-input" id="manual-size" type="number" value="500" min="100" step="100"/>
+        <span style="font-size:10px;color:var(--muted);">USDT</span>
+      </div>
+      <div class="size-btns">
+        <button class="size-btn" onclick="setManualSize(500)">$500</button>
+        <button class="size-btn" onclick="setManualSize(5000)">$5K</button>
+        <button class="size-btn" onclick="setManualSize(10000)">$10K</button>
+        <button class="size-btn active" onclick="setManualSize(50000)">$50K</button>
+        <button class="size-btn" onclick="setManualSize('custom')">Custom</button>
+      </div>
+
+      <div class="manual-btns">
+        <button class="manual-long"  id="btn-manual-long"  onclick="manualOrder('BUY')">▲ LONG</button>
+        <button class="manual-short" id="btn-manual-short" onclick="manualOrder('SELL')">▼ SHORT</button>
+      </div>
+      <div class="manual-info" id="manual-info">
+        Tamaño calculado al precio actual · SL y TP automáticos
+      </div>
+    </div>
+
+    <!-- API TEST PANEL -->
+    <div class="api-test-wrap" id="api-test-wrap">
+      <div class="api-test-title">Verificar conexión API</div>
+      <div>
+        <button class="api-test-btn" onclick="runApiTest('balance')">💰 Balance</button>
+        <button class="api-test-btn" onclick="runApiTest('position')">📊 Posiciones</button>
+        <button class="api-test-btn" onclick="runApiTest('orders')">📋 Órdenes abiertas</button>
+        <button class="api-test-btn" onclick="runApiTest('ping')">🏓 Ping</button>
+      </div>
+      <div class="api-test-result" id="api-test-result"></div>
+    </div>
+
+    <!-- AUTOTRADE PAUSE -->
+    <div id="autotrade-wrap">
+      <button class="pause-btn active" id="pause-btn" onclick="toggleAutotrade()">
+        ▶ AUTO-TRADE ACTIVO
+      </button>
+    </div>
+
+    <!-- RESET HISTORY BTN -->
+    <div style="padding:0 16px 10px;display:flex;justify-content:flex-end;">
+      <button onclick="resetHistory()" style="padding:6px 14px;background:transparent;border:1px solid var(--red2);color:var(--red2);font-family:var(--mono);font-size:9px;border-radius:6px;cursor:pointer;letter-spacing:1px;opacity:0.7;">🗑 REINICIAR HISTORIAL</button>
+    </div>
+
+    <!-- ACTIVE POSITION -->
+    <div id="pos-section" style="display:none;">
+      <div class="section-title">Posición activa</div>
+      <div class="pos-box" id="pos-box">
+        <div class="pos-header">
+          <div class="pos-title" id="pos-title">—</div>
+          <div class="pos-pnl" id="pos-pnl">$0</div>
+        </div>
+        <div class="pos-details" id="pos-details">—</div>
+        <div id="advisor-wrap" class="advisor-wrap neutral" style="margin-top:10px;">
+          <div class="advisor-header">
+            <div>
+              <div style="font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;">Recomendación IA</div>
+              <div class="advisor-rec neutral" id="advisor-rec">Analizando...</div>
+            </div>
+            <div class="advisor-conf" id="advisor-conf" style="color:var(--muted);">—</div>
+          </div>
+          <div class="advisor-prob">
+            <div class="prob-bar-wrap">
+              <div class="prob-label">Prob. TP</div>
+              <div class="prob-bar-bg"><div class="prob-fill-tp" id="prob-tp" style="width:50%"></div></div>
+              <div class="prob-val" id="prob-tp-val" style="color:var(--green)">—</div>
+            </div>
+            <div class="prob-bar-wrap">
+              <div class="prob-label">Prob. SL</div>
+              <div class="prob-bar-bg"><div class="prob-fill-sl" id="prob-sl" style="width:50%"></div></div>
+              <div class="prob-val" id="prob-sl-val" style="color:var(--red2)">—</div>
+            </div>
+          </div>
+          <div class="advisor-reason" id="advisor-reason">Esperando datos...</div>
+          <button class="advisor-close-btn" id="advisor-close-btn" onclick="closePosition()">⚡ CERRAR AHORA — RECOMENDADO</button>
+        </div>
+        <button class="close-btn" onclick="closePosition()">✕ CERRAR POSICIÓN MANUALMENTE</button>
+      </div>
+    </div>
+
+    <!-- BINANCE POSITIONS SYNC -->
+    <div class="bsync-wrap" id="bsync-wrap">
+      <div class="bsync-title">
+        <span>Posiciones en Binance</span>
+        <button class="bsync-btn" onclick="syncBinancePositions()">🔄 Actualizar</button>
+      </div>
+      <div id="bsync-content"><div class="bsync-empty">Cargando...</div></div>
+    </div>
+
+    <!-- PERFORMANCE STATS -->
+    <div class="section-title">Performance del sistema</div>
+    <div class="perf-grid">
+      <div class="perf-card">
+        <div class="perf-label">Win Rate</div>
+        <div class="perf-value" id="perf-wr" style="color:var(--green)">—</div>
+      </div>
+      <div class="perf-card">
+        <div class="perf-label">Señales</div>
+        <div class="perf-value" id="perf-total" style="color:var(--blue)">0</div>
+      </div>
+      <div class="perf-card">
+        <div class="perf-label">Ganadas</div>
+        <div class="perf-value" id="perf-wins" style="color:var(--green)">0</div>
+      </div>
+      <div class="perf-card">
+        <div class="perf-label">Perdidas</div>
+        <div class="perf-value" id="perf-losses" style="color:var(--red2)">0</div>
+      </div>
+    </div>
+
+    <div id="theories-list" style="display:none;"></div>
+
+    <!-- CHART -->
+    <div class="section-title">Precio + EMAs · 50 velas 5M</div>
+    <div class="chart-wrap">
+      <div class="chart-header">
+        <span id="chart-range">—</span>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-line" style="background:#00e676"></div>P</div>
+          <div class="legend-item"><div class="legend-line" style="background:#ffd600"></div>E15</div>
+          <div class="legend-item"><div class="legend-line" style="background:#ff9100"></div>E60</div>
+          <div class="legend-item"><div class="legend-line" style="background:#29b6f6"></div>E99</div>
+        </div>
+      </div>
+      <canvas id="chart" height="150"></canvas>
+    </div>
+
+    <!-- VOLUME -->
+    <div class="section-title">Volumen · últimas 30 velas</div>
+    <div class="vol-wrap"><div class="vol-bars" id="vol-bars"></div></div>
+
+    <!-- SIGNAL LOG -->
+    <div class="section-title">Historial de señales</div>
+    <div class="log-wrap" id="signal-log"><div style="font-size:10px;color:var(--muted);padding:8px 0;">Sin señales aún. Esperando 80%+...</div></div>
+
+    <div class="disclaimer">⚠️ ANÁLISIS TÉCNICO · No es asesoramiento financiero · Datos Binance Futures API pública</div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-item"><span class="status-val" id="sb-price">—</span><span>PRECIO</span></div>
+    <div class="status-item"><span class="status-val" id="sb-cert">—</span><span>CERTEZA</span></div>
+    <div class="status-item"><span class="status-val" id="sb-wr">—</span><span>WIN RATE</span></div>
+    <div class="status-item"><span class="status-val" id="sb-next">3s</span><span>PRÓX.</span></div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────
+const SYMBOL   = 'BTCUSDT';
+const INTERVAL = '5m';
+const LIMIT    = 150;
+const REFRESH  = 3000;
+const CHECK_RESULT_AFTER = 12; // candles after signal to evaluate result (~60 min)
+const ENDPOINTS = [
+  'https://fapi.binance.com/fapi/v1',
+  'https://api.allorigins.win/raw?url=https://fapi.binance.com/fapi/v1',
+  'https://corsproxy.io/?https://fapi.binance.com/fapi/v1',
+  'https://thingproxy.freeboard.io/fetch/https://fapi.binance.com/fapi/v1',
+];
+
+// ─── TRADE CONFIG ──────────────────────────────────────
+const CAPITAL        = 5000;    // USDT enviado como cantidad a Binance
+const LEVERAGE       = 10;     // Configurado en Binance (modo aislado)
+const TARGET_PROFIT  = 30;     // USD ganancia objetivo por operación
+const MAX_LOSS       = 20;     // USD pérdida máxima por operación
+const POSITION_SIZE  = CAPITAL; // USDT enviado como cantidad a Binance
+const REAL_EXPOSURE  = CAPITAL * LEVERAGE; // $50,000 exposición real con leverage
+const ATR_SL_MULT    = 1.5;
+const ATR_TP_MULT    = 2.5;
+const TP_PCT         = TARGET_PROFIT / REAL_EXPOSURE; // 0.6% — $382 en $63k
+const SL_PCT         = MAX_LOSS      / REAL_EXPOSURE; // 0.4% — $255 en $63k
+
+// ─── STATE ─────────────────────────────────────────────
+// ─── API STATE ─────────────────────────────────────────
+const API_PROFILES = {
+  casa:    { label: '🏠 Casa',    key: '', secret: '' },
+  gym:     { label: '💪 Gym',     key: '', secret: '' },
+  trabajo: { label: '💼 Trabajo', key: '', secret: '' },
+  celular: { label: '📱 Celular', key: '', secret: '' },
+};
+let activeProfile  = 'celular';
+let API_KEY        = '';
+let API_SECRET     = '';
+let apiEnabled     = false;
+let activePosition = null;
+let autotradePaused = false;
+let SIGNAL_THRESHOLD = 70;
+let autoSLTP = true;       // place SL/TP automatically
+let allowMultiple = false; // allow multiple positions
+
+function selectProfile(name) {
+  activeProfile = name;
+  const prof = API_PROFILES[name];
+  const hasSaved = prof.key !== '';
+
+  // Update button styles
+  ['casa','gym','trabajo','celular'].forEach(p => {
+    const btn = document.getElementById('pb-'+p);
+    if (!btn) return;
+    const hs = API_PROFILES[p].key !== '';
+    btn.className = 'profile-btn' + (hs ? ' saved' : '') + (p === name ? ' selected' : '');
+  });
+
+  // Show status for selected profile
+  const statusEl = document.getElementById('profile-edit-status');
+  if (statusEl) {
+    if (hasSaved) {
+      statusEl.innerHTML = `<span style="color:var(--green)">✅ ${prof.label} tiene key guardada.</span> <span style="color:var(--muted);font-size:9px;">Ingresá nuevas keys para reemplazarla, o dejá vacío para mantener la actual.</span>`;
+    } else {
+      statusEl.innerHTML = `<span style="color:var(--muted)">○ ${prof.label} sin key configurada. Ingresá las keys para este perfil.</span>`;
+    }
+  }
+
+  // Clear inputs so user can enter new keys
+  document.getElementById('inp-key').value    = '';
+  document.getElementById('inp-secret').value = '';
+  document.getElementById('inp-key').placeholder    = hasSaved ? 'Nueva API Key (dejar vacío para mantener)' : 'API Key';
+  document.getElementById('inp-secret').placeholder = hasSaved ? 'Nuevo API Secret (dejar vacío para mantener)' : 'API Secret';
+  document.getElementById('inp-key').dataset.filled    = '0';
+  document.getElementById('inp-secret').dataset.filled = '0';
+  updateProfilesStatus();
+}
+
+function updateProfilesStatus() {
+  const el = document.getElementById('profiles-status');
+  if (!el) return;
+  el.innerHTML = ['casa','gym','trabajo','celular'].map(p => {
+    const prof = API_PROFILES[p];
+    const ok = prof.key !== '';
+    return `<span style="color:${ok?'var(--green)':'var(--muted)'};">${ok?'✅':'○'} ${prof.label}</span>&nbsp;&nbsp;`;
+  }).join('');
+}
+
+// Clear input when user starts typing (to replace masked value)
+document.addEventListener('DOMContentLoaded', () => {
+  ['inp-key','inp-secret'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('focus', function() {
+      if (this.dataset.filled === '1') { this.value = ''; this.dataset.filled = '0'; }
+    });
+  });
+  updateProfilesStatus();
+  selectProfile('celular');
+});
+
+function saveApiKeys() {
+  const k = document.getElementById('inp-key').value.trim();
+  const s = document.getElementById('inp-secret').value.trim();
+  if (!k || !s) { alert('Ingresá la API Key y Secret de Binance'); return; }
+  API_KEY    = k;
+  API_SECRET = s;
+  apiEnabled = true;
+  // Persist (basic obfuscation)
+  try {
+    localStorage.setItem('btc_binance_key',    btoa(k));
+    localStorage.setItem('btc_binance_secret', btoa(s));
+  } catch {}
+  document.getElementById('api-modal').style.display = 'none';
+  document.getElementById('inp-key').value    = '';
+  document.getElementById('inp-secret').value = '';
+  updateApiIndicator();
+  testConnection();
+}
+
+function skipApi() {
+  apiEnabled = false;
+  document.getElementById('api-modal').style.display = 'none';
+  fallbackToPublicApi();
+}
+
+function updateApiIndicator() {
+  const el = document.getElementById('api-indicator');
+  if (!el) return;
+  if (apiEnabled) {
+    el.className   = 'api-indicator connected';
+    el.textContent = '● BINANCE CONECTADO';
+    usingPublicApi = false;
+  } else if (usingPublicApi) {
+    el.className   = 'api-indicator';
+    el.style.borderColor = 'rgba(255,214,0,0.4)';
+    el.style.color       = '#ffd600';
+    el.textContent = '◐ BINANCE PÚBLICO (solo señales)';
+  } else {
+    el.className   = 'api-indicator disconnected';
+    el.style.borderColor = '';
+    el.style.color       = '';
+    el.textContent = '○ BINANCE SIN CONECTAR';
+  }
+}
+
+// Switch profile without re-entering keys
+function switchProfile(name) {
+  if (!API_PROFILES[name].key) {
+    // No key saved — open modal to enter
+    document.getElementById('api-modal').style.display = 'flex';
+    selectProfile(name);
+    return;
+  }
+  activeProfile = name;
+  API_KEY       = API_PROFILES[name].key;
+  API_SECRET    = API_PROFILES[name].secret;
+  apiEnabled    = true;
+  updateApiIndicator();
+  testConnection();
+}
+
+function setManualSize(val) {
+  if (val === 'custom') {
+    document.getElementById('manual-size').focus();
+    return;
+  }
+  document.getElementById('manual-size').value = val;
+  document.querySelectorAll('.size-btn').forEach(b => {
+    b.className = b.textContent.replace('$','').replace('K','000') == val || 
+      (b.textContent==='$1K'&&val===1000) || (b.textContent==='$5K'&&val===5000) ||
+      (b.textContent==='$10K'&&val===10000) || (b.textContent==='$50K'&&val===50000)
+      ? 'size-btn active' : 'size-btn';
+  });
+  updateManualInfo();
+}
+
+function updateManualInfo() {
+  const sizeEl = document.getElementById('manual-size');
+  const infoEl = document.getElementById('manual-info');
+  if (!sizeEl || !infoEl) return;
+  const exposure = parseFloat(sizeEl.value) || CAPITAL;
+  const price    = prevPrice || 63000;
+  const qty      = (exposure / price).toFixed(3);
+  // SL/TP in price points based on REAL_EXPOSURE (not manual exposure)
+  // so that PnL always targets MAX_LOSS/$TARGET_PROFIT
+  const manualExposure = exposure * LEVERAGE;
+  const slPts  = price * (MAX_LOSS      / manualExposure);
+  const tp1Pts = price * (TARGET_PROFIT / manualExposure);
+  const slUSD  = parseFloat(qty) * slPts  * LEVERAGE;
+  const tpUSD  = parseFloat(qty) * tp1Pts * LEVERAGE;
+  infoEl.innerHTML = `<b style="color:var(--blue)">${qty} BTC</b> · SL: <b style="color:var(--red2)">-$${slUSD.toFixed(0)}</b> · TP1: <b style="color:var(--green)">+$${tpUSD.toFixed(0)}</b>`;
+}
+
+async function manualOrder(side) {
+  if (!apiEnabled) { alert('Conectá la API primero'); return; }
+  if (activePosition) { alert('Ya hay una posición abierta. Cerrala primero.'); return; }
+
+  const exposure = parseFloat(document.getElementById('manual-size').value) || POSITION_SIZE;
+  const isLong   = side === 'BUY';
+  const price    = prevPrice || 63000;
+  const qty      = (exposure / price).toFixed(3);
+  const slPts    = price * SL_PCT;
+  const tp1Pts   = price * TP_PCT;
+  const slPrice  = isLong ? price - slPts  : price + slPts;
+  const tpPrice  = isLong ? price + tp1Pts : price - tp1Pts;
+
+  const confirmed = confirm(
+    `${isLong ? '▲ LONG' : '▼ SHORT'} MANUAL
+
+` +
+    `Exposición: $${exposure.toLocaleString()}
+` +
+    `Cantidad: ${qty} BTC
+` +
+    `Precio aprox: $${price.toFixed(0)}
+` +
+    `Stop Loss: $${slPrice.toFixed(0)} (-$${(parseFloat(qty)*slPts).toFixed(0)})
+` +
+    `Take Profit: $${tpPrice.toFixed(0)} (+$${(parseFloat(qty)*tp1Pts).toFixed(0)})
+
+` +
+    `¿Confirmar orden?`
+  );
+  if (!confirmed) return;
+
+  // Disable buttons during order
+  document.getElementById('btn-manual-long').disabled  = true;
+  document.getElementById('btn-manual-short').disabled = true;
+  document.getElementById('manual-info').innerHTML = '⏳ Enviando orden...';
+
+  try {
+    await setLeverage();
+    const order = await binancePrivate('POST', '/fapi/v1/order', {
+      symbol: SYMBOL, side, type: 'MARKET',
+      quantity: qty, positionSide: 'BOTH'
+    });
+
+    const entryPrice = parseFloat(order.avgPrice) || price;
+    const sl  = isLong ? entryPrice - (entryPrice * SL_PCT)  : entryPrice + (entryPrice * SL_PCT);
+    const tp1 = isLong ? entryPrice + (entryPrice * TP_PCT) : entryPrice - (entryPrice * TP_PCT);
+
+    const slOrder = await binancePrivate('POST', '/fapi/v1/order', {
+      symbol: SYMBOL, side: isLong ? 'SELL' : 'BUY',
+      type: 'STOP_MARKET', stopPrice: sl.toFixed(2),
+      closePosition: 'true', positionSide: 'BOTH'
+    });
+    const tpOrder = await binancePrivate('POST', '/fapi/v1/order', {
+      symbol: SYMBOL, side: isLong ? 'SELL' : 'BUY',
+      type: 'TAKE_PROFIT_MARKET', stopPrice: tp1.toFixed(2),
+      closePosition: 'true', positionSide: 'BOTH'
+    });
+
+    activePosition = {
+      side, entryPrice, qty: parseFloat(qty), sl, tp1,
+      orderId: order.orderId,
+      slOrderId: slOrder.orderId,
+      tp1OrderId: tpOrder.orderId,
+      openTime: Date.now(),
+      manual: true
+    };
+
+    saveState(STATE);
+    updatePositionUI(price);
+    showNotif('BTC · Orden manual ejecutada', `${isLong?'▲ LONG':'▼ SHORT'} @ $${entryPrice.toFixed(0)}`);
+    playSignalAlert(isLong);
+    vibrate([200,100,200]);
+
+    document.getElementById('manual-info').innerHTML = `✅ Orden ejecutada @ $${entryPrice.toFixed(0)}`;
+  } catch(e) {
+    document.getElementById('manual-info').innerHTML = `❌ Error: ${e.message}`;
+    alert('Error: ' + e.message);
+  }
+
+  document.getElementById('btn-manual-long').disabled  = false;
+  document.getElementById('btn-manual-short').disabled = false;
+}
+
+// ─── BINANCE POSITIONS SYNC ────────────────────────────
+// ─── SYNC REAL SL/TP FROM BINANCE ORDERS ──────────────
+async function syncRealSLTP() {
+  if (!apiEnabled || !activePosition) return;
+  try {
+    // Check both regular and algo open orders
+    const [regularOrders, algoOrdersRes] = await Promise.all([
+      binancePrivate('GET', '/fapi/v1/openOrders', {symbol: SYMBOL}).catch(()=>[]),
+      binancePrivate('GET', '/fapi/v1/openAlgoOrders', {symbol: SYMBOL}).catch(()=>({algoOrders:[]}))
+    ]);
+    const algoList = algoOrdersRes.algoOrders || [];
+    const orders = [
+      ...regularOrders,
+      ...algoList.map(o => ({
+        ...o,
+        orderId: o.algoId,
+        stopPrice: o.triggerPrice,
+        type: o.type
+      }))
+    ];
+    if (!orders.length) return;
+
+    const isLong = activePosition.side === 'BUY';
+    const closeSide = isLong ? 'SELL' : 'BUY';
+
+    // Find SL order (STOP_MARKET or STOP)
+    const slOrder = orders.find(o =>
+      o.side === closeSide &&
+      (o.type === 'STOP_MARKET' || o.type === 'STOP') &&
+      parseFloat(o.stopPrice) > 0
+    );
+
+    // Find TP order (TAKE_PROFIT_MARKET or TAKE_PROFIT)
+    const tpOrder = orders.find(o =>
+      o.side === closeSide &&
+      (o.type === 'TAKE_PROFIT_MARKET' || o.type === 'TAKE_PROFIT') &&
+      parseFloat(o.stopPrice) > 0
+    );
+
+    // Update activePosition with real levels from Binance
+    if (slOrder) {
+      activePosition.sl = parseFloat(slOrder.stopPrice);
+      activePosition.slOrderId = slOrder.orderId;
+      activePosition.slOnBinance = true;
+    }
+    if (tpOrder) {
+      activePosition.tp1 = parseFloat(tpOrder.stopPrice);
+      activePosition.tp1OrderId = tpOrder.orderId;
+      activePosition.tpOnBinance = true;
+    }
+
+    if (slOrder || tpOrder) {
+      const note = `✅ SL: $${activePosition.sl.toFixed(0)} · TP: $${activePosition.tp1.toFixed(0)} (sincronizado con Binance)`;
+      activePosition.monitorNote = note;
+      saveState(STATE);
+    }
+  } catch(e) { console.warn('syncRealSLTP:', e.message); }
+}
+
+async function syncBinancePositions() {
+  if (!apiEnabled) return;
+  const wrap = document.getElementById('bsync-wrap');
+  const content = document.getElementById('bsync-content');
+  wrap.style.display = 'block';
+  content.innerHTML = '<div class="bsync-empty">⏳ Consultando Binance...</div>';
+
+  try {
+    // Fetch open positions and current price in parallel
+    const [positions, tickerRes] = await Promise.all([
+      binancePrivate('GET', '/fapi/v2/positionRisk', {}),
+      fetch('https://fapi.binance.com/fapi/v1/ticker/price?symbol='+SYMBOL).then(r=>r.json())
+    ]);
+
+    const openPos = positions.filter(p => Math.abs(parseFloat(p.positionAmt)) > 0.001);
+    const currentPrice = parseFloat(tickerRes.price);
+
+    if (openPos.length === 0) {
+      content.innerHTML = '<div class="bsync-empty">✅ Sin posiciones abiertas en Binance</div>';
+      return;
+    }
+
+    content.innerHTML = openPos.map(pos => {
+      const amt       = parseFloat(pos.positionAmt);
+      const isLong    = amt > 0;
+      const entry     = parseFloat(pos.entryPrice);
+      const pnl       = parseFloat(pos.unRealizedProfit);
+      const liqPrice  = parseFloat(pos.liquidationPrice);
+      const leverage  = parseFloat(pos.leverage);
+      const notional  = Math.abs(amt) * currentPrice;
+
+      // Calculate SL/TP based on app config
+      const sl  = isLong ? entry - (entry * SL_PCT)  : entry + (entry * SL_PCT);
+      const tp1 = isLong ? entry + (entry * TP_PCT) : entry - (entry * TP_PCT);
+
+      // Run advisor analysis
+      const rec = advisorQuick(currentPrice, entry, isLong, sl, tp1, pnl);
+
+      const pnlClass = pnl >= 0 ? 'profit' : 'loss';
+      const sideClass = isLong ? 'long' : 'short';
+      const sideLabel = isLong ? '▲ LONG' : '▼ SHORT';
+
+      return `<div class="bsync-pos">
+        <div class="bsync-pos-header">
+          <div class="bsync-pos-side ${sideClass}">${sideLabel} · ${Math.abs(amt).toFixed(3)} BTC</div>
+          <div class="bsync-pos-pnl ${pnlClass}">${pnl>=0?'+':''}$${pnl.toFixed(2)}</div>
+        </div>
+        <div class="bsync-pos-details">
+          Entrada: <b>$${entry.toFixed(1)}</b> · Precio: <b>$${currentPrice.toFixed(1)}</b> · Lev: <b>${leverage}x</b><br>
+          SL app: <b style="color:var(--red2)">$${sl.toFixed(1)}</b> · TP1 app: <b style="color:var(--green)">$${tp1.toFixed(1)}</b><br>
+          Liquidación: <b style="color:var(--orange)">$${liqPrice.toFixed(1)}</b> · Nocional: <b>$${notional.toFixed(0)}</b>
+        </div>
+        <div class="bsync-rec ${rec.cls}">
+          <div class="bsync-rec-text">
+            <div class="bsync-rec-label ${rec.cls}">${rec.label}</div>
+            <div style="font-size:9px;color:var(--muted);margin-top:2px;">${rec.reasons.slice(0,3).join(' · ')}</div>
+          </div>
+          ${rec.cls==='close' ? `<button class="bsync-close-btn" onclick="closeBinancePosition('${pos.symbol}','${Math.abs(amt)}','${isLong?'SELL':'BUY'}')">⚡ CERRAR</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    content.innerHTML = `<div class="bsync-empty" style="color:var(--red2)">❌ Error: ${e.message}</div>`;
+  }
+}
+
+// Quick advisor for Binance positions (no indicator data, uses price/pnl/levels)
+function advisorQuick(price, entry, isLong, sl, tp1, pnl) {
+  let score = 0;
+  const reasons = [];
+
+  const distToSL = Math.abs(price - sl);
+  const distToTP = Math.abs(price - tp1);
+  const totalRange = distToSL + distToTP;
+
+  // Distance factor
+  if (distToTP < distToSL) {
+    score += 2;
+    reasons.push(`✅ Más cerca del TP ($${distToTP.toFixed(0)})`);
+  } else {
+    score -= 2;
+    reasons.push(`⚠️ Más cerca del SL ($${distToSL.toFixed(0)})`);
+  }
+
+  // PnL factor
+  if (pnl > TARGET_PROFIT * 0.7) {
+    score += 2;
+    reasons.push(`💰 PnL $${pnl.toFixed(0)} cerca del objetivo`);
+  } else if (pnl > 0) {
+    score += 1;
+    reasons.push(`✅ En ganancia +$${pnl.toFixed(0)}`);
+  } else if (pnl < -MAX_LOSS * 0.7) {
+    score -= 2;
+    reasons.push(`🔴 Pérdida $${pnl.toFixed(0)} cerca del límite`);
+  } else if (pnl < 0) {
+    score -= 1;
+    reasons.push(`❌ En pérdida $${pnl.toFixed(0)}`);
+  }
+
+  // Direction of current price vs entry
+  const moved = isLong ? price - entry : entry - price;
+  if (moved > 0) {
+    score += 1;
+    reasons.push(`✅ Precio movió $${moved.toFixed(0)} a favor`);
+  } else {
+    score -= 1;
+    reasons.push(`❌ Precio movió $${Math.abs(moved).toFixed(0)} en contra`);
+  }
+
+  // TP proximity bonus
+  const pctToTP = distToTP / (Math.abs(tp1 - entry));
+  if (pctToTP < 0.3) {
+    score += 2;
+    reasons.push(`🎯 A solo ${(pctToTP*100).toFixed(0)}% del TP`);
+  }
+
+  let cls, label;
+  if (score >= 2)       { cls = 'hold';    label = '✅ MANTENER'; }
+  else if (score <= -2) { cls = 'close';   label = '🔴 CERRAR'; }
+  else                  { cls = 'neutral'; label = '⚪ NEUTRAL'; }
+
+  return { cls, label, reasons, score };
+}
+
+async function closeBinancePosition(symbol, qty, side) {
+  if (!confirm(`¿Cerrar posición ${side==='SELL'?'LONG':'SHORT'} de ${qty} BTC en ${symbol}?`)) return;
+  try {
+    await binancePrivate('POST', '/fapi/v1/order', {
+      symbol, side, type:'MARKET',
+      quantity: qty, reduceOnly:'true'
+    });
+    showNotif('Posición cerrada ✅', `${symbol} ${side} ${qty} BTC`);
+    playBeep(660, 0.3);
+    await syncBinancePositions(); // refresh
+  } catch(e) {
+    alert('Error cerrando: ' + e.message);
+  }
+}
+
+function analyzeActivePosition(currentPrice, indicators) {
+  if (!activePosition) return;
+  const { side, entryPrice, sl, tp1 } = activePosition;
+  const isLong = side === 'BUY';
+
+  // Extract indicators
+  const { rsi, macdLine, macdSig, ema15, ema60, atr, vols, volSma, closes } = indicators;
+
+  // Distance to SL and TP
+  const distToSL = Math.abs(currentPrice - sl);
+  const distToTP = Math.abs(currentPrice - tp1);
+  const totalRange = distToSL + distToTP;
+  const pctToSL = distToSL / totalRange; // how far SL is as % of range
+  const pctToTP = distToTP / totalRange;
+
+  // Score factors (positive = favors holding, negative = favors closing)
+  let score = 0;
+  const reasons = [];
+
+  // 1. Price distance factor
+  if (pctToTP < 0.3) {
+    score += 2;
+    reasons.push(`✅ Precio cerca del TP ($${distToTP.toFixed(0)} restantes)`);
+  } else if (pctToSL < 0.3) {
+    score -= 2;
+    reasons.push(`⚠️ Precio cerca del SL ($${distToSL.toFixed(0)} de margen)`);
+  }
+
+  // 2. RSI momentum
+  if (isLong) {
+    if (rsi > 55) { score += 1; reasons.push(`✅ RSI ${rsi.toFixed(1)} — momentum alcista`); }
+    else if (rsi < 45) { score -= 1; reasons.push(`❌ RSI ${rsi.toFixed(1)} — momentum bajista`); }
+    else reasons.push(`⚪ RSI ${rsi.toFixed(1)} — neutro`);
+    if (rsi > 75) { score -= 2; reasons.push(`🔴 RSI sobrecomprado — posible reversión`); }
+  } else {
+    if (rsi < 45) { score += 1; reasons.push(`✅ RSI ${rsi.toFixed(1)} — momentum bajista`); }
+    else if (rsi > 55) { score -= 1; reasons.push(`❌ RSI ${rsi.toFixed(1)} — momentum alcista`); }
+    else reasons.push(`⚪ RSI ${rsi.toFixed(1)} — neutro`);
+    if (rsi < 25) { score -= 2; reasons.push(`🔴 RSI sobrevendido — posible reversión`); }
+  }
+
+  // 3. MACD direction
+  const macdBull = macdLine > macdSig;
+  if (isLong && macdBull) { score += 1.5; reasons.push(`✅ MACD alcista — momentum a favor`); }
+  else if (isLong && !macdBull) { score -= 1.5; reasons.push(`❌ MACD bajista — momentum en contra`); }
+  else if (!isLong && !macdBull) { score += 1.5; reasons.push(`✅ MACD bajista — a favor del SHORT`); }
+  else if (!isLong && macdBull) { score -= 1.5; reasons.push(`❌ MACD alcista — en contra del SHORT`); }
+
+  // 4. EMA alignment
+  const priceAboveEMA15 = currentPrice > ema15;
+  const ema15AboveEMA60 = ema15 > ema60;
+  if (isLong && priceAboveEMA15 && ema15AboveEMA60) { score += 1.5; reasons.push(`✅ EMAs alineadas alcistas`); }
+  else if (isLong && (!priceAboveEMA15 || !ema15AboveEMA60)) { score -= 1.5; reasons.push(`❌ EMAs en contra del LONG`); }
+  else if (!isLong && !priceAboveEMA15 && !ema15AboveEMA60) { score += 1.5; reasons.push(`✅ EMAs alineadas bajistas`); }
+  else if (!isLong && (priceAboveEMA15 || ema15AboveEMA60)) { score -= 1.5; reasons.push(`❌ EMAs en contra del SHORT`); }
+
+  // 5. Recent candles direction
+  const last3 = closes.slice(-3);
+  const last3Up = last3[2] > last3[0];
+  if (isLong && last3Up) { score += 1; reasons.push(`✅ Últimas 3 velas alcistas`); }
+  else if (isLong && !last3Up) { score -= 1; reasons.push(`❌ Últimas 3 velas bajistas`); }
+  else if (!isLong && !last3Up) { score += 1; reasons.push(`✅ Últimas 3 velas bajistas`); }
+  else if (!isLong && last3Up) { score -= 1; reasons.push(`❌ Últimas 3 velas alcistas`); }
+
+  // 6. Volume confirmation
+  const volRatio = volSma ? vols[vols.length-1] / volSma : 1;
+  if (volRatio > 1.3) { score += 0.5; reasons.push(`✅ Volumen alto — confirma movimiento`); }
+  else if (volRatio < 0.5) { score -= 0.5; reasons.push(`⚪ Volumen bajo — sin convicción`); }
+
+  // 7. PnL context
+  const pnlPts = isLong ? currentPrice - entryPrice : entryPrice - currentPrice;
+  const pnlUSD = (POSITION_SIZE / entryPrice) * pnlPts;
+  if (pnlUSD > 0) { score += 0.5; reasons.push(`💰 PnL positivo +$${pnlUSD.toFixed(0)} — considerar asegurar`); }
+  else if (pnlUSD < -MAX_LOSS * 0.7) { score -= 1; reasons.push(`🔴 Perdiendo $${Math.abs(pnlUSD).toFixed(0)} — cerca del límite`); }
+
+  // Calculate probabilities
+  const maxScore = 9.5;
+  const normalizedScore = (score + maxScore) / (2 * maxScore); // 0 to 1
+  const probTP = Math.round(Math.min(Math.max(normalizedScore * 100, 5), 95));
+  const probSL = 100 - probTP;
+
+  // Recommendation
+  let rec, cls, conf;
+  if (probTP >= 65) { rec = '✅ MANTENER'; cls = 'hold'; conf = probTP + '%'; }
+  else if (probSL >= 65) { rec = '🔴 CERRAR'; cls = 'close'; conf = probSL + '%'; }
+  else { rec = '⚪ NEUTRAL'; cls = 'neutral'; conf = '~50%'; }
+
+  // Update UI
+  const wrap = document.getElementById('advisor-wrap');
+  const recEl = document.getElementById('advisor-rec');
+  const confEl = document.getElementById('advisor-conf');
+  const reasonEl = document.getElementById('advisor-reason');
+  const closeBtn = document.getElementById('advisor-close-btn');
+
+  if (wrap) {
+    wrap.className = 'advisor-wrap ' + cls;
+    recEl.textContent = rec;
+    recEl.className = 'advisor-rec ' + cls;
+    confEl.textContent = conf;
+    confEl.style.color = cls==='hold'?'var(--green)':cls==='close'?'var(--red2)':'var(--muted)';
+    reasonEl.innerHTML = reasons.slice(0,4).join('<br>');
+    document.getElementById('prob-tp').style.width = probTP + '%';
+    document.getElementById('prob-sl').style.width = probSL + '%';
+    document.getElementById('prob-tp-val').textContent = probTP + '%';
+    document.getElementById('prob-sl-val').textContent = probSL + '%';
+    // Show close button if strongly recommend closing
+    closeBtn.style.display = cls === 'close' && probSL >= 70 ? 'block' : 'none';
+  }
+
+  // Alert if recommendation changed to CLOSE
+  if (cls === 'close' && probSL >= 75 && alertsOn) {
+    playWarningBeep();
+    vibrate([300,100,300]);
+    showNotif('BTC ⚠️ Cerrar posición', `Prob. SL: ${probSL}% · ${reasons[0]||''}`);
+  }
+}
+
+async function runApiTest(type) {
+  const res = document.getElementById('api-test-result');
+  res.style.display = 'block';
+  res.className = 'api-test-result loading';
+  res.textContent = '⏳ Consultando Binance...';
+
+  try {
+    if (type === 'ping') {
+      const t0 = Date.now();
+      await fetch('https://fapi.binance.com/fapi/v1/ping');
+      const ms = Date.now() - t0;
+      res.className = 'api-test-result ok';
+      res.innerHTML = `✅ PING OK · ${ms}ms latencia<br>Servidor Binance Futures respondiendo correctamente.`;
+
+    } else if (type === 'balance') {
+      const data = await binancePrivate('GET', '/fapi/v2/balance', {});
+      const usdt = data.find(a => a.asset === 'USDT');
+      if (usdt) {
+        res.className = 'api-test-result ok';
+        res.innerHTML =
+          `✅ BALANCE OK<br>` +
+          `Balance total: <b>$${parseFloat(usdt.balance).toFixed(2)} USDT</b><br>` +
+          `Disponible: <b>$${parseFloat(usdt.availableBalance).toFixed(2)} USDT</b><br>` +
+          `PnL no realizado: <b>$${parseFloat(usdt.crossUnPnl).toFixed(2)}</b>`;
+      } else {
+        res.className = 'api-test-result err';
+        res.textContent = '❌ No se encontró balance USDT. Verificá permisos de Futuros.';
+      }
+
+    } else if (type === 'position') {
+      const data = await binancePrivate('GET', '/fapi/v2/positionRisk', {symbol: SYMBOL});
+      const pos = data.find(p => parseFloat(p.positionAmt) !== 0);
+      if (pos) {
+        const isLong = parseFloat(pos.positionAmt) > 0;
+        res.className = 'api-test-result ok';
+        res.innerHTML =
+          `✅ POSICIÓN ABIERTA DETECTADA<br>` +
+          `Dirección: <b>${isLong ? '▲ LONG' : '▼ SHORT'}</b><br>` +
+          `Tamaño: <b>${Math.abs(parseFloat(pos.positionAmt))} BTC</b><br>` +
+          `Entrada: <b>$${parseFloat(pos.entryPrice).toFixed(1)}</b><br>` +
+          `PnL: <b style="color:${parseFloat(pos.unRealizedProfit)>=0?'var(--green)':'var(--red2)'}">$${parseFloat(pos.unRealizedProfit).toFixed(2)}</b><br>` +
+          `Liquidación: <b style="color:var(--red2)">$${parseFloat(pos.liquidationPrice).toFixed(1)}</b>`;
+      } else {
+        res.className = 'api-test-result ok';
+        res.innerHTML = `✅ SIN POSICIONES ABIERTAS<br>Cuenta limpia, lista para operar.`;
+      }
+
+    } else if (type === 'orders') {
+      const data = await binancePrivate('GET', '/fapi/v1/openOrders', {symbol: SYMBOL});
+      if (data.length === 0) {
+        res.className = 'api-test-result ok';
+        res.innerHTML = `✅ SIN ÓRDENES ABIERTAS<br>No hay SL ni TP pendientes.`;
+      } else {
+        res.className = 'api-test-result ok';
+        res.innerHTML = `✅ ${data.length} ORDEN(ES) ACTIVA(S)<br>` +
+          data.map(o =>
+            `· ${o.type} ${o.side} @ $${parseFloat(o.stopPrice||o.price).toFixed(1)}`
+          ).join('<br>');
+      }
+    }
+  } catch(e) {
+    res.className = 'api-test-result err';
+    res.innerHTML = `❌ ERROR: ${e.message}<br><br>` +
+      `Causas comunes:<br>` +
+      `· API key o secret incorrectos<br>` +
+      `· Sin permisos de Futuros habilitados<br>` +
+      `· IP no autorizada en la key<br>` +
+      `· Timestamp desincronizado`;
+  }
+}
+
+function toggleSLTP(val) {
+  autoSLTP = val;
+  console.log('Auto SL/TP:', val);
+}
+
+function toggleMultiple(val) {
+  allowMultiple = val;
+  console.log('Allow multiple:', val);
+}
+
+function setThreshold(val) {
+  SIGNAL_THRESHOLD = val;
+  document.getElementById('thr-current').textContent = val + '%';
+  // Update threshold line on cert bar (reposition the marker)
+  const marker = document.querySelector('.cert-threshold');
+  const markerLbl = document.querySelector('.cert-threshold-lbl');
+  if (marker) marker.style.left = val + '%';
+  if (markerLbl) { markerLbl.style.left = (val+1) + '%'; markerLbl.textContent = val + '%'; }
+  // Update selected button
+  document.querySelectorAll('.thr-btn').forEach(b => {
+    b.className = parseInt(b.textContent) === val ? 'thr-btn selected' : 'thr-btn';
+  });
+  // Update header subtitle
+  document.querySelector('.header-sub').textContent = `FUTURES · 7 TEORÍAS AUTO-CORRECTIVAS · ${val}%+`;
+}
+
+async function manualExecute() {
+  if (!apiEnabled) {
+    alert('Primero conectá la API de Binance.');
+    return;
+  }
+  if (activePosition && !allowMultiple) {
+    if (!confirm('Hay una posición activa. ¿Activar múltiples posiciones y continuar?')) return;
+    allowMultiple = true;
+    const tog = document.getElementById('toggle-multi');
+    if (tog) tog.checked = true;
+  }
+  const btn = document.getElementById('manual-exec-btn');
+  const lastEntry = STATE.signalLog[0];
+  if (!lastEntry) {
+    alert('No hay señal registrada para ejecutar.');
+    return;
+  }
+  const dir = lastEntry.direction;
+  if (dir !== 'LONG' && dir !== 'SHORT') {
+    alert('La última señal no es LONG ni SHORT.');
+    return;
+  }
+  if (!confirm(`¿Ejecutar ${dir} manualmente?\nEntrada al precio de mercado actual.\nSL y TP se colocan automáticamente.`)) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Ejecutando...';
+  try {
+    await openPosition(dir === 'LONG' ? 'BUY' : 'SELL');
+    btn.textContent = '✅ Ejecutado';
+    setTimeout(() => {
+      document.getElementById('manual-exec-wrap').style.display = 'none';
+    }, 2000);
+  } catch(e) {
+    btn.textContent = '❌ Error — intentar de nuevo';
+    btn.disabled = false;
+  }
+}
+
+// Track last missed signal for manual execution
+let lastMissedSignal = null;
+
+function resetHistory() {
+  if (!confirm('¿Reiniciar historial de señales y estadísticas?\nEsto borra el win rate, señales y pesos aprendidos.')) return;
+  STATE.signalLog    = [];
+  STATE.wins         = 0;
+  STATE.losses       = 0;
+  STATE.theoryStats  = {t1:{w:0,l:0},t2:{w:0,l:0},t3:{w:0,l:0},t4:{w:0,l:0},t5:{w:0,l:0},t6:{w:0,l:0},t7:{w:0,l:0}};
+  STATE.theoryWeights= {t1:2,t2:1.5,t3:2,t4:1.5,t5:1.5,t6:1.5,t7:1};
+  saveState(STATE);
+  updatePerformanceUI();
+  renderLog();
+  playBeep(440, 0.2);
+}
+
+function toggleAutotrade() {
+  autotradePaused = !autotradePaused;
+  const btn = document.getElementById('pause-btn');
+  if (autotradePaused) {
+    btn.className = 'pause-btn paused';
+    btn.textContent = '⏸ AUTO-TRADE PAUSADO';
+    showNotif('BTC · Auto-trade', '⏸ Pausado — no se abrirán nuevas posiciones');
+  } else {
+    btn.className = 'pause-btn active';
+    btn.textContent = '▶ AUTO-TRADE ACTIVO';
+    showNotif('BTC · Auto-trade', '▶ Activo — operando señales ≥80%');
+  }
+}
+
+async function testConnection() {
+  try {
+    const [data] = await Promise.all([
+      binancePrivate('GET', '/fapi/v2/account', {}),
+      detectAccountMode()
+    ]);
+    if (data.totalWalletBalance) {
+      const bal = parseFloat(data.totalWalletBalance).toFixed(2);
+      showNotif('Binance conectado ✅', `Balance: $${bal} · Modo: ${isHedgeMode?'HEDGE':'ONE-WAY'}`);
+      playBeep(660, 0.2); setTimeout(()=>playBeep(880,0.2),200);
+      updateApiIndicator();
+    }
+  } catch(e) {
+    console.warn('API privada falló:', e.message);
+    apiEnabled = false;
+    fallbackToPublicApi();
+  }
+}
+
+// ─── FALLBACK A API PÚBLICA ────────────────────────────
+let usingPublicApi = false;
+
+function fallbackToPublicApi() {
+  usingPublicApi = true;
+  apiEnabled     = false;
+  updateApiIndicator();
+  // Asegurar que el loader se oculte y el contenido sea visible
+  const loader  = document.getElementById('loader');
+  const content = document.getElementById('main-content');
+  if (loader)  loader.style.display  = 'none';
+  if (content) content.style.display = 'block';
+  // Aviso amarillo no bloqueante (desaparece solo)
+  const el = document.getElementById('error-msg');
+  if (el) {
+    el.style.display     = 'block';
+    el.style.background  = 'rgba(255,214,0,0.08)';
+    el.style.borderColor = 'rgba(255,214,0,0.3)';
+    el.style.color       = '#ffd600';
+    el.innerHTML = '⚠️ Sin API privada · Datos públicos activos (solo señales) · <span style="cursor:pointer;text-decoration:underline;" onclick="document.getElementById(\'api-modal\').style.display=\'flex\'">Conectar API</span>';
+    setTimeout(() => { if (el) el.style.display = 'none'; }, 8000);
+  }
+  console.log('Modo público activo — usando API pública de Binance Futures');
+}
+
+// ─── BINANCE PRIVATE API ────────────────────────────────
+function signQuery(params) {
+  const qs = Object.entries(params).map(([k,v])=>k+'='+v).join('&');
+  const sig = CryptoJS.HmacSHA256(qs, API_SECRET).toString();
+  return qs + '&signature=' + sig;
+}
+
+async function binancePrivate(method, path, params) {
+  params.timestamp = Date.now();
+  params.recvWindow = 5000;
+  const signed = signQuery(params);
+  const baseUrl = 'https://fapi.binance.com';
+  const url = method === 'GET'
+    ? baseUrl + path + '?' + signed
+    : baseUrl + path;
+  const opts = {
+    method,
+    headers: { 'X-MBX-APIKEY': API_KEY, 'Content-Type': 'application/x-www-form-urlencoded' }
+  };
+  if (method !== 'GET') opts.body = signed;
+  const res = await fetch(url, opts);
+  const data = await res.json();
+  if (data.code && data.code < 0) throw new Error(data.msg);
+  return data;
+}
+
+// ══════════════════════════════════════════════════════
+// ─── BYBIT API ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════
+const BYBIT_PROFILES = {
+  casa:    { label: '🏠 Casa',    key: '', secret: '' },
+  gym:     { label: '💪 Gym',     key: '', secret: '' },
+  trabajo: { label: '💼 Trabajo', key: '', secret: '' },
+  celular: { label: '📱 Celular', key: '', secret: '' },
+};
+let bybitProfile  = 'celular';
+let BYBIT_KEY     = '';
+let BYBIT_SECRET  = '';
+let bybitEnabled  = false;
+let bybitLeverage = 10;
+
+function saveBybitProfiles() {
+  try {
+    const p = {};
+    ['casa','gym','trabajo','celular'].forEach(k => {
+      p[k] = {
+        key:    BYBIT_PROFILES[k].key    ? btoa(BYBIT_PROFILES[k].key)    : '',
+        secret: BYBIT_PROFILES[k].secret ? btoa(BYBIT_PROFILES[k].secret) : ''
+      };
+    });
+    localStorage.setItem('btc_bybit_profiles', JSON.stringify(p));
+  } catch {}
+}
+
+function loadBybitProfiles() {
+  try {
+    const raw = localStorage.getItem('btc_bybit_profiles');
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    ['casa','gym','trabajo','celular'].forEach(k => {
+      if (p[k]) {
+        BYBIT_PROFILES[k].key    = p[k].key    ? atob(p[k].key)    : '';
+        BYBIT_PROFILES[k].secret = p[k].secret ? atob(p[k].secret) : '';
+      }
+    });
+  } catch {}
+}
+
+// Bybit V5 signature: timestamp + apiKey + recvWindow + queryString
+function bybitSign(params) {
+  const ts  = Date.now().toString();
+  const rw  = '5000';
+  const qs  = Object.entries(params).sort().map(([k,v])=>k+'='+v).join('&');
+  const raw = ts + BYBIT_KEY + rw + qs;
+  const sig = CryptoJS.HmacSHA256(raw, BYBIT_SECRET).toString();
+  return { ts, rw, sig, qs };
+}
+
+async function bybitPrivate(method, path, params = {}) {
+  const BASE = 'https://api.bybit.com';
+  const { ts, rw, sig, qs } = bybitSign(params);
+  const headers = {
+    'X-BAPI-API-KEY':   BYBIT_KEY,
+    'X-BAPI-TIMESTAMP': ts,
+    'X-BAPI-RECV-WINDOW': rw,
+    'X-BAPI-SIGN':      sig,
+    'Content-Type':     'application/json',
+  };
+  let url, opts;
+  if (method === 'GET') {
+    url  = BASE + path + (qs ? '?' + qs : '');
+    opts = { method, headers };
+  } else {
+    url  = BASE + path;
+    opts = { method, headers, body: JSON.stringify(params) };
+    // POST needs different sign: timestamp + apiKey + recvWindow + body
+    const body = JSON.stringify(params);
+    const rawPost = ts + BYBIT_KEY + rw + body;
+    const sigPost = CryptoJS.HmacSHA256(rawPost, BYBIT_SECRET).toString();
+    headers['X-BAPI-SIGN'] = sigPost;
+    opts.body = body;
+  }
+  const res  = await fetch(url, opts);
+  const data = await res.json();
+  if (data.retCode !== 0) throw new Error(`Bybit [${data.retCode}]: ${data.retMsg}`);
+  return data.result;
+}
+
+async function bybitSetLeverage(symbol, lev) {
+  try {
+    await bybitPrivate('POST', '/v5/position/set-leverage', {
+      category: 'linear', symbol, buyLeverage: String(lev), sellLeverage: String(lev)
+    });
+  } catch(e) { console.warn('Bybit leverage:', e.message); }
+}
+
+async function bybitOpenOrder(side, qty, symbol = 'BTCUSDT') {
+  // side: 'Buy' or 'Sell'
+  return bybitPrivate('POST', '/v5/order/create', {
+    category:   'linear',
+    symbol,
+    side,
+    orderType:  'Market',
+    qty:        String(qty),
+    timeInForce:'IOC',
+    positionIdx: 0, // one-way mode
+  });
+}
+
+async function bybitPlaceSL(side, qty, stopPrice, symbol = 'BTCUSDT') {
+  const closeSide = side === 'Buy' ? 'Sell' : 'Buy';
+  return bybitPrivate('POST', '/v5/order/create', {
+    category:    'linear',
+    symbol,
+    side:        closeSide,
+    orderType:   'Market',
+    qty:         String(qty),
+    triggerPrice: String(stopPrice),
+    triggerBy:   'MarkPrice',
+    triggerDirection: side === 'Buy' ? 2 : 1, // 2=falls below, 1=rises above
+    stopOrderType: 'StopLoss',
+    timeInForce: 'IOC',
+    positionIdx: 0,
+    reduceOnly:  true,
+  });
+}
+
+async function bybitPlaceTP(side, qty, tpPrice, symbol = 'BTCUSDT') {
+  const closeSide = side === 'Buy' ? 'Sell' : 'Buy';
+  return bybitPrivate('POST', '/v5/order/create', {
+    category:    'linear',
+    symbol,
+    side:        closeSide,
+    orderType:   'Market',
+    qty:         String(qty),
+    triggerPrice: String(tpPrice),
+    triggerBy:   'MarkPrice',
+    triggerDirection: side === 'Buy' ? 1 : 2,
+    stopOrderType: 'TakeProfit',
+    timeInForce: 'IOC',
+    positionIdx: 0,
+    reduceOnly:  true,
+  });
+}
+
+async function bybitGetBalance() {
+  const r = await bybitPrivate('GET', '/v5/account/wallet-balance', { accountType: 'UNIFIED' });
+  const coin = r?.list?.[0]?.coin?.find(c => c.coin === 'USDT');
+  return coin ? parseFloat(coin.availableToWithdraw) : null;
+}
+
+async function bybitGetPositions() {
+  return bybitPrivate('GET', '/v5/position/list', { category: 'linear', symbol: 'BTCUSDT' });
+}
+
+async function bybitClosePosition(side, qty) {
+  const closeSide = side === 'Buy' ? 'Sell' : 'Buy';
+  return bybitPrivate('POST', '/v5/order/create', {
+    category: 'linear', symbol: 'BTCUSDT',
+    side: closeSide, orderType: 'Market',
+    qty: String(qty), timeInForce: 'IOC',
+    positionIdx: 0, reduceOnly: true,
+  });
+}
+
+async function testBybitConnection() {
+  try {
+    const bal = await bybitGetBalance();
+    if (bal !== null) {
+      bybitEnabled = true;
+      updateBybitIndicator();
+      showNotif('Bybit conectado ✅', `Balance disponible: $${bal.toFixed(2)} USDT`);
+      playBeep(660, 0.2); setTimeout(()=>playBeep(880,0.2),200);
+    }
+  } catch(e) {
+    bybitEnabled = false;
+    updateBybitIndicator();
+    alert('Error conectando Bybit:\n' + e.message + '\nVerificá las keys y permisos de Futuros.');
+  }
+}
+
+function updateBybitIndicator() {
+  const el = document.getElementById('bybit-indicator');
+  if (!el) return;
+  el.className = 'api-indicator ' + (bybitEnabled ? 'connected' : 'disconnected');
+  el.textContent = bybitEnabled ? '● BYBIT ' + BYBIT_PROFILES[bybitProfile].label.toUpperCase() : '○ BYBIT SIN CONECTAR';
+  ['casa','gym','trabajo','celular'].forEach(p => {
+    const btn = document.getElementById('bybit-qp-'+p);
+    if (!btn) return;
+    const active = bybitEnabled && p === bybitProfile;
+    btn.style.borderColor = active ? '#f7931a' : 'var(--border2)';
+    btn.style.color       = active ? '#f7931a' : 'var(--muted)';
+    btn.style.background  = active ? 'rgba(247,147,26,0.1)' : 'transparent';
+  });
+}
+
+function saveBybitKeys() {
+  const k = document.getElementById('bybit-inp-key').value.trim();
+  const s = document.getElementById('bybit-inp-secret').value.trim();
+  const lev = parseInt(document.getElementById('bybit-inp-lev').value) || 10;
+  if (!k || !s) { alert('Ingresá API Key y Secret de Bybit'); return; }
+  BYBIT_PROFILES[bybitProfile].key    = k;
+  BYBIT_PROFILES[bybitProfile].secret = s;
+  BYBIT_KEY    = k;
+  BYBIT_SECRET = s;
+  bybitLeverage = lev;
+  saveBybitProfiles();
+  document.getElementById('bybit-modal').style.display = 'none';
+  document.getElementById('bybit-inp-key').value    = '';
+  document.getElementById('bybit-inp-secret').value = '';
+  testBybitConnection();
+}
+
+function switchBybitProfile(name) {
+  if (!BYBIT_PROFILES[name].key) {
+    document.getElementById('bybit-modal').style.display = 'flex';
+    bybitProfile = name;
+    return;
+  }
+  bybitProfile = name;
+  BYBIT_KEY    = BYBIT_PROFILES[name].key;
+  BYBIT_SECRET = BYBIT_PROFILES[name].secret;
+  bybitEnabled = true;
+  updateBybitIndicator();
+  testBybitConnection();
+}
+
+// Ejecutar orden en BYBIT desde protocolo
+async function bybitExecOrder(side, qty, sl, tp1) {
+  const bSide = side === 'BUY' ? 'Buy' : 'Sell';
+  const info  = document.getElementById('proto-exec-info');
+
+  info.textContent = '⏳ Enviando orden a Bybit...';
+  await bybitSetLeverage('BTCUSDT', bybitLeverage);
+
+  // Entry
+  const order = await bybitOpenOrder(bSide, qty);
+  const price  = prevPrice;
+
+  info.textContent = '⏳ Colocando SL y TP...';
+
+  // SL
+  let slOk = false;
+  try { await bybitPlaceSL(bSide, qty, sl.toFixed(2)); slOk = true; } catch(e) { console.warn('Bybit SL:', e.message); }
+
+  // TP
+  let tpOk = false;
+  try { await bybitPlaceTP(bSide, qty, tp1.toFixed(2)); tpOk = true; } catch(e) { console.warn('Bybit TP:', e.message); }
+
+  activePosition = {
+    side, entryPrice: price, qty: parseFloat(qty), sl, tp1,
+    orderId: order?.orderId || '',
+    slOnBinance: slOk, tpOnBinance: tpOk,
+    openTime: Date.now(),
+    monitorNote: `Bybit · ${slOk?'✅ SL':'⚠️ SL manual'} · ${tpOk?'✅ TP':'⚠️ TP manual'}`
+  };
+
+  saveState(STATE);
+  updatePositionUI(price);
+  playSignalAlert(side === 'BUY');
+  vibrate([200,100,200,100,400]);
+  showNotif('Bybit · Orden ✅', `${side==='BUY'?'LONG':'SHORT'} @ $${price?.toFixed(0)} · SL:$${sl.toFixed(0)} · TP:$${tp1.toFixed(0)}`);
+  info.innerHTML = `✅ Bybit ${side==='BUY'?'LONG':'SHORT'} @ $${price?.toFixed(0)} · SL:$${sl.toFixed(0)} · TP:$${tp1.toFixed(0)}`;
+  updateProtoButtons(protoChecks.every(Boolean));
+}
+
+// ─── SET LEVERAGE ───────────────────────────────────────
+let isHedgeMode = false; // detected automatically
+
+async function detectAccountMode() {
+  try {
+    const config = await binancePrivate('GET', '/fapi/v1/positionSide/dual', {});
+    isHedgeMode = config.dualSidePosition === true;
+    console.log('Account mode:', isHedgeMode ? 'HEDGE' : 'ONE-WAY');
+  } catch(e) { console.warn('Could not detect account mode:', e.message); }
+}
+
+async function setLeverage() {
+  try {
+    await binancePrivate('POST', '/fapi/v1/leverage', {
+      symbol: SYMBOL, leverage: LEVERAGE
+    });
+  } catch(e) { console.warn('Leverage:', e.message); }
+}
+
+// ─── OPEN POSITION ──────────────────────────────────────
+async function openPosition(side) {
+  if (!apiEnabled) return;
+  if (autotradePaused) return;
+
+  try {
+    // 1. Check Binance for existing position (skip block if allowMultiple)
+    const posRisk = await binancePrivate('GET', '/fapi/v2/positionRisk', {symbol: SYMBOL});
+    const existingPos = posRisk.find(p => parseFloat(p.positionAmt) !== 0);
+    if (existingPos && !allowMultiple) {
+      const existAmt = parseFloat(existingPos.positionAmt);
+      const existSide = existAmt > 0 ? 'LONG' : 'SHORT';
+      alert(`⚠️ Binance ya tiene una posición abierta (${existSide} ${Math.abs(existAmt)} BTC).\nActivá "Permitir múltiples posiciones" para abrir otra.`);
+      return;
+    }
+
+    // 2. Set leverage
+    await setLeverage();
+
+    // 3. Get fresh price
+    const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/price?symbol='+SYMBOL);
+    const tickerData = await tickerRes.json();
+    const price = parseFloat(tickerData.price);
+    // qty in BTC = CAPITAL(USDT) / price — this matches Binance "0.079 BTC" display
+    const qty   = parseFloat((CAPITAL / price).toFixed(3)); // ~0.032 BTC with $2000 at $63k
+
+    // 3b. Detect account mode (hedge vs one-way)
+    await detectAccountMode();
+    const positionSide = isHedgeMode ? (side === 'BUY' ? 'LONG' : 'SHORT') : 'BOTH';
+
+    // 4. Market entry order
+    const entryParams = { symbol:SYMBOL, side, type:'MARKET', quantity:qty.toString() };
+    if (isHedgeMode) entryParams.positionSide = positionSide;
+    const order = await binancePrivate('POST', '/fapi/v1/order', entryParams);
+
+    const entryPrice = parseFloat(order.avgPrice) || price;
+    const isLong = side === 'BUY';
+
+    // Calculate SL/TP using ATR-based approach from app state
+    // Fallback to fixed % if ATR not available
+    const slPts  = entryPrice * SL_PCT;
+    const tp1Pts = entryPrice * TP_PCT;
+    const sl  = isLong ? entryPrice - slPts : entryPrice + slPts;
+    const tp1 = isLong ? entryPrice + tp1Pts : entryPrice - tp1Pts;
+    const oppSide = isLong ? 'SELL' : 'BUY';
+
+    let slOrderId = null, tp1OrderId = null;
+    let slOnBinance = false, tpOnBinance = false;
+    const slErrors = [], tpErrors = [];
+
+    // Skip SL/TP if user disabled auto placement
+    if (!autoSLTP) {
+      activePosition = {
+        side, entryPrice, qty, sl, tp1,
+        orderId: order.orderId,
+        slOrderId: null, tp1OrderId: null,
+        slOnBinance: false, tpOnBinance: false,
+        openTime: Date.now(),
+        monitorNote: '⚠️ SL/TP desactivados — colocarlos manualmente en Binance'
+      };
+      saveState(STATE);
+      updatePositionUI(entryPrice);
+      showNotif('BTC · Posición abierta ✅', `${isLong?'LONG':'SHORT'} @ $${entryPrice.toFixed(0)} · SL/TP manuales`);
+      playSignalAlert(isLong);
+      vibrate([200,100,200]);
+      return;
+    }
+
+    // 5. Place SL — try all approaches and collect errors
+    // Build SL/TP params based on account mode
+    const slBase = isHedgeMode
+      ? { symbol:SYMBOL, side:oppSide, positionSide, quantity:qty.toString(), workingType:'MARK_PRICE' }
+      : { symbol:SYMBOL, side:oppSide, quantity:qty.toString(), reduceOnly:'true', workingType:'MARK_PRICE' };
+    const slBaseCP = isHedgeMode
+      ? { symbol:SYMBOL, side:oppSide, positionSide, quantity:qty.toString(), workingType:'CONTRACT_PRICE' }
+      : { symbol:SYMBOL, side:oppSide, quantity:qty.toString(), reduceOnly:'true', workingType:'CONTRACT_PRICE' };
+
+    const slApproaches = [
+      { ...slBase,   type:'STOP_MARKET', stopPrice:sl.toFixed(2) },
+      { ...slBaseCP, type:'STOP_MARKET', stopPrice:sl.toFixed(2) },
+      { symbol:SYMBOL, side:oppSide, type:'STOP_MARKET', stopPrice:sl.toFixed(2), closePosition:'true', workingType:'MARK_PRICE' },
+      { symbol:SYMBOL, side:oppSide, type:'STOP_MARKET', stopPrice:sl.toFixed(2), closePosition:'true', workingType:'CONTRACT_PRICE' },
+      { symbol:SYMBOL, side:oppSide, type:'STOP', price:sl.toFixed(2), stopPrice:sl.toFixed(2), quantity:qty.toString(), timeInForce:'GTC', reduceOnly:'true' },
+    ];
+
+    // Binance requires /fapi/v1/algoOrder for conditional orders since Dec 2025
+    // Parameters for algo orders use 'triggerPrice' instead of 'stopPrice'
+    // and 'algoType':'CONDITIONAL'
+    const algoBase = {
+      symbol: SYMBOL,
+      side: oppSide,
+      algoType: 'CONDITIONAL',
+      quantity: qty.toString(),
+      ...(isHedgeMode ? {positionSide} : {reduceOnly:'true'})
+    };
+
+    // SL attempts: algoOrder endpoint first, then fallback to regular
+    const slEndpoints = [
+      // Correct Algo endpoint (Dec 2025+)
+      ['/fapi/v1/algoOrder', { ...algoBase, type:'STOP_MARKET',   triggerPrice:sl.toFixed(2), workingType:'MARK_PRICE',     priceProtect:'TRUE' }],
+      ['/fapi/v1/algoOrder', { ...algoBase, type:'STOP_MARKET',   triggerPrice:sl.toFixed(2), workingType:'CONTRACT_PRICE', priceProtect:'TRUE' }],
+      ['/fapi/v1/algoOrder', { ...algoBase, type:'STOP',          triggerPrice:sl.toFixed(2), price:sl.toFixed(2), timeInForce:'GTC', workingType:'MARK_PRICE' }],
+      // Fallback regular endpoint
+      ['/fapi/v1/order', { symbol:SYMBOL, side:oppSide, type:'STOP_MARKET', stopPrice:sl.toFixed(2), quantity:qty.toString(), reduceOnly:'true', workingType:'MARK_PRICE' }],
+      ['/fapi/v1/order', { symbol:SYMBOL, side:oppSide, type:'STOP_MARKET', stopPrice:sl.toFixed(2), closePosition:'true',   workingType:'MARK_PRICE' }],
+    ];
+
+    for (const [endpoint, params] of slEndpoints) {
+      try {
+        const slOrder = await binancePrivate('POST', endpoint, params);
+        const id = slOrder.orderId || slOrder.algoId;
+        if (id) { slOrderId = id; slOnBinance = true; console.log('SL OK:', endpoint, params.type); break; }
+      } catch(e) { slErrors.push(`${params.type}@${endpoint.split('/').pop()}(${params.workingType||''}): ${e.message}`); }
+    }
+
+    // TP attempts
+    const tpEndpoints = [
+      ['/fapi/v1/algoOrder', { ...algoBase, type:'TAKE_PROFIT_MARKET', triggerPrice:tp1.toFixed(2), workingType:'MARK_PRICE',     priceProtect:'TRUE',  triggerContractType:'MARK_PRICE' }],
+      ['/fapi/v1/algoOrder', { ...algoBase, type:'TAKE_PROFIT_MARKET', triggerPrice:tp1.toFixed(2), workingType:'MARK_PRICE',     priceProtect:'FALSE' }],
+      ['/fapi/v1/algoOrder', { ...algoBase, type:'TAKE_PROFIT_MARKET', triggerPrice:tp1.toFixed(2), workingType:'CONTRACT_PRICE', priceProtect:'FALSE' }],
+      ['/fapi/v1/algoOrder', { ...algoBase, type:'TAKE_PROFIT',        triggerPrice:tp1.toFixed(2), price:tp1.toFixed(2), timeInForce:'GTC', workingType:'MARK_PRICE' }],
+      ['/fapi/v1/order', { symbol:SYMBOL, side:oppSide, type:'TAKE_PROFIT_MARKET', stopPrice:tp1.toFixed(2), quantity:qty.toString(), reduceOnly:'true', workingType:'MARK_PRICE' }],
+      ['/fapi/v1/order', { symbol:SYMBOL, side:oppSide, type:'TAKE_PROFIT_MARKET', stopPrice:tp1.toFixed(2), quantity:qty.toString(), reduceOnly:'true', workingType:'CONTRACT_PRICE' }],
+    ];
+
+    for (const [endpoint, params] of tpEndpoints) {
+      try {
+        const tpOrder = await binancePrivate('POST', endpoint, params);
+        const id = tpOrder.orderId || tpOrder.algoId;
+        if (id) { tp1OrderId = id; tpOnBinance = true; console.log('TP OK:', endpoint, params.type); break; }
+      } catch(e) { tpErrors.push(`${params.type}@${endpoint.split('/').pop()}(${params.workingType||''}): ${e.message}`); }
+    }
+
+    // Show detailed error report if SL/TP failed
+    if (!slOnBinance || !tpOnBinance) {
+      const errReport = [
+        !slOnBinance ? '❌ SL FALLÓ:\n' + slErrors.join('\n') : '✅ SL OK',
+        !tpOnBinance ? '❌ TP FALLÓ:\n' + tpErrors.join('\n') : '✅ TP OK'
+      ].join('\n\n');
+      console.error('SL/TP errors:', errReport);
+      // Show first unique error to user
+      const firstErr = slErrors[0] || tpErrors[0] || 'Error desconocido';
+      setTimeout(() => alert(
+        `Posición abierta ✅\nEntrada: $${entryPrice.toFixed(0)}\n\n` +
+        `${!slOnBinance?'❌ SL no colocado en Binance':'✅ SL colocado'}\n` +
+        `${!tpOnBinance?'❌ TP no colocado en Binance':'✅ TP colocado'}\n\n` +
+        `Error principal:\n${firstErr}\n\n` +
+        `La app monitorea SL/TP automáticamente.\nMantené la app abierta.`
+      ), 500);
+    }
+
+    const monitorNote = (slOnBinance && tpOnBinance)
+      ? '✅ SL y TP colocados en Binance'
+      : slOnBinance
+      ? '⚠️ SL en Binance · TP monitoreado por app'
+      : tpOnBinance
+      ? '⚠️ TP en Binance · SL monitoreado por app'
+      : '⚠️ SL y TP monitoreados por app (mantener abierta)';
+
+    activePosition = {
+      side, entryPrice, qty, sl, tp1,
+      orderId: order.orderId,
+      slOrderId, tp1OrderId,
+      slOnBinance, tpOnBinance,
+      openTime: Date.now(),
+      monitorNote
+    };
+
+    saveState(STATE);
+    updatePositionUI(entryPrice);
+
+    // Retry SL placement if failed
+    if (!slOnBinance) {
+      console.warn('SL failed on open, retrying in 3s...');
+      setTimeout(async () => {
+        for (const [endpoint, params] of slEndpoints) {
+          try {
+            const r = await binancePrivate('POST', endpoint, params);
+            const id = r.orderId || r.algoId;
+            if (id) {
+              activePosition.slOrderId  = id;
+              activePosition.slOnBinance = true;
+              activePosition.monitorNote = '✅ SL colocado (reintento) · ' + (tpOnBinance ? 'TP OK' : 'TP monitoreado');
+              saveState(STATE);
+              console.log('SL retry OK:', endpoint);
+              break;
+            }
+          } catch(e) { console.warn('SL retry failed:', e.message); }
+        }
+      }, 3000);
+    }
+    // Sync real SL/TP after 3 seconds (orders may not be immediately visible)
+    setTimeout(() => syncRealSLTP(), 3000);
+    setTimeout(() => syncRealSLTP(), 8000);
+
+    showNotif('BTC · Posición abierta ✅', `${isLong?'LONG':'SHORT'} @ $${entryPrice.toFixed(0)} · SL:$${sl.toFixed(0)} · TP:$${tp1.toFixed(0)}`);
+    playSignalAlert(isLong);
+    vibrate([200,100,200,100,400]);
+
+    if (!slOnBinance || !tpOnBinance) {
+      setTimeout(() => alert(
+        `Posición abierta ✅\n\n`+
+        `${isLong?'LONG':'SHORT'} @ $${entryPrice.toFixed(0)}\n`+
+        `SL: $${sl.toFixed(0)}\n`+
+        `TP1: $${tp1.toFixed(0)}\n\n`+
+        monitorNote+`\n\n`+
+        ((!slOnBinance||!tpOnBinance) ? 'Mantené la app abierta para el cierre automático.' : '')
+      ), 300);
+    }
+
+  } catch(e) {
+    alert('Error abriendo posición:\n' + e.message);
+    console.error(e);
+  }
+}
+
+
+async function monitorPosition(currentPrice) {
+  if (!activePosition) return;
+  const { side, entryPrice, qty, sl, tp1 } = activePosition;
+  const isLong = side === 'BUY';
+
+  // Check if TP or SL was hit
+  const hitTP = isLong ? currentPrice >= tp1 : currentPrice <= tp1;
+  const hitSL = isLong ? currentPrice <= sl  : currentPrice >= sl;
+
+  if (hitTP || hitSL) {
+    const result = hitTP ? 'win' : 'loss';
+    const exitPrice = hitTP ? tp1 : sl;
+    const pnlPts = Math.abs(exitPrice - entryPrice);
+    const pnlUSD = qty * pnlPts * (hitTP ? 1 : -1) * (isLong ? 1 : -1);
+    // Position was closed by SL/TP orders on Binance — just clear locally
+    activePosition = null;
+    saveState(STATE);
+    updatePositionUI(null);
+    showNotif('BTC · Posición cerrada', `${result==='win'?'✅ GANADA':'❌ PERDIDA'} · $${pnlUSD.toFixed(2)}`);
+    if (result==='win') { playBeep(880,0.5,'sine',0.4); vibrate([200,100,200]); }
+    else { playBeep(220,0.5,'sawtooth',0.3); vibrate([500]); }
+    return;
+  }
+
+  // Update live PnL display
+  updatePositionUI(currentPrice);
+}
+
+async function closePosition() {
+  if (!activePosition || !apiEnabled) return;
+  if (!confirm('¿Cerrar posición manualmente?')) return;
+  try {
+    // Cancel SL and TP orders if they exist on Binance
+    try {
+      if (activePosition.slOrderId)  await binancePrivate('DELETE', '/fapi/v1/order', {symbol:SYMBOL, orderId:activePosition.slOrderId});
+      if (activePosition.tp1OrderId) await binancePrivate('DELETE', '/fapi/v1/order', {symbol:SYMBOL, orderId:activePosition.tp1OrderId});
+    } catch(e) { console.warn('Cancel orders:', e.message); }
+    // Market close
+    await binancePrivate('POST', '/fapi/v1/order', {
+      symbol: SYMBOL,
+      side: activePosition.side==='BUY' ? 'SELL' : 'BUY',
+      type: 'MARKET',
+      quantity: activePosition.qty,
+      reduceOnly: 'true',
+      positionSide: 'BOTH'
+    });
+    activePosition = null;
+    saveState(STATE);
+    updatePositionUI(null);
+  } catch(e) { alert('Error cerrando: ' + e.message); }
+}
+
+function updatePositionUI(currentPrice) {
+  const sec = document.getElementById('pos-section');
+  const box = document.getElementById('pos-box');
+  if (!activePosition) {
+    sec.style.display = 'none';
+    return;
+  }
+  sec.style.display = 'block';
+  const isLong = activePosition.side === 'BUY';
+  const pnlPts = currentPrice ? (isLong ? currentPrice - activePosition.entryPrice : activePosition.entryPrice - currentPrice) : 0;
+  const pnlUSD = activePosition.qty * pnlPts;
+  box.className = 'pos-box ' + (isLong ? 'open-long' : 'open-short');
+  document.getElementById('pos-title').textContent  = (isLong ? '▲ LONG' : '▼ SHORT') + ' · ' + activePosition.qty + ' BTC';
+  document.getElementById('pos-title').className    = 'pos-title ' + (isLong ? 'long' : 'short');
+  document.getElementById('pos-pnl').textContent    = (pnlUSD >= 0 ? '+' : '') + '$' + pnlUSD.toFixed(2);
+  document.getElementById('pos-pnl').className      = 'pos-pnl ' + (pnlUSD >= 0 ? 'profit' : 'loss');
+  document.getElementById('pos-details').innerHTML  =
+    `Entrada: <b>$${activePosition.entryPrice.toFixed(1)}</b> &nbsp;·&nbsp; `+
+    `SL: <b style="color:var(--red2)">$${activePosition.sl.toFixed(1)}</b> &nbsp;·&nbsp; `+
+    `TP1: <b style="color:var(--green)">$${activePosition.tp1.toFixed(1)}</b><br>`+
+    `Precio actual: <b>$${currentPrice?.toFixed(1)||'—'}</b> &nbsp;·&nbsp; `+
+    `Apertura: ${new Date(activePosition.openTime).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}<br>`+
+    `<span style="font-size:9px;color:var(--muted)">${activePosition.monitorNote||''}</span>`;
+  // Store current price for advisor
+  if (currentPrice) activePosition._lastPrice = currentPrice;
+}
+
+let prevPrice    = null;
+let alertsOn     = false;
+let lastSignal   = '';
+let lastCertPct  = 0;
+let countdown    = 3;
+let audioCtx     = null;
+
+// Persistent state (localStorage)
+// ─── PERSISTENT STORAGE ────────────────────────────────
+// Uses localStorage + sessionStorage + memory as triple fallback
+let _memState = null;
+
+function storageSet(key, value) {
+  const str = JSON.stringify(value);
+  try { localStorage.setItem(key, str); } catch {}
+  try { sessionStorage.setItem(key, str); } catch {}
+  _memState = value; // always keep in memory
+}
+
+function storageGet(key) {
+  try {
+    const s = localStorage.getItem(key);
+    if (s) return JSON.parse(s);
+  } catch {}
+  try {
+    const s = sessionStorage.getItem(key);
+    if (s) return JSON.parse(s);
+  } catch {}
+  return _memState || null;
+}
+
+function loadState() {
+  const s = storageGet('btc_smart_state');
+  return s || {};
+}
+
+function saveState(s) {
+  storageSet('btc_smart_state', s);
+}
+
+// Save/load API profiles separately so they persist across sessions
+function saveApiProfiles() {
+  try {
+    const profiles = {};
+    ['casa','gym','trabajo','celular'].forEach(p => {
+      // Encode keys (basic obfuscation — not encryption)
+      profiles[p] = {
+        key:    API_PROFILES[p].key    ? btoa(API_PROFILES[p].key)    : '',
+        secret: API_PROFILES[p].secret ? btoa(API_PROFILES[p].secret) : ''
+      };
+    });
+    localStorage.setItem('btc_api_profiles', JSON.stringify(profiles));
+    sessionStorage.setItem('btc_api_profiles', JSON.stringify(profiles));
+  } catch(e) { console.warn('Could not save profiles:', e); }
+}
+
+function loadApiProfiles() {
+  try {
+    const raw = localStorage.getItem('btc_api_profiles') || sessionStorage.getItem('btc_api_profiles');
+    if (!raw) return;
+    const profiles = JSON.parse(raw);
+    ['casa','gym','trabajo','celular'].forEach(p => {
+      if (profiles[p]) {
+        API_PROFILES[p].key    = profiles[p].key    ? atob(profiles[p].key)    : '';
+        API_PROFILES[p].secret = profiles[p].secret ? atob(profiles[p].secret) : '';
+      }
+    });
+    console.log('API profiles loaded from storage');
+  } catch(e) { console.warn('Could not load profiles:', e); }
+}
+
+let STATE = loadState();
+if (!STATE.theoryWeights) STATE.theoryWeights = {t1:2,t2:1.5,t3:2,t4:1.5,t5:1.5,t6:1.5,t7:1};
+if (!STATE.theoryStats)   STATE.theoryStats   = {t1:{w:0,l:0},t2:{w:0,l:0},t3:{w:0,l:0},t4:{w:0,l:0},t5:{w:0,l:0},t6:{w:0,l:0},t7:{w:0,l:0}};
+if (!STATE.signalLog)     STATE.signalLog      = [];
+if (!STATE.wins)          STATE.wins           = 0;
+if (!STATE.losses)        STATE.losses         = 0;
+
+// ─── MATH ──────────────────────────────────────────────
+function calcEMA(data, period) {
+  const k = 2/(period+1), result = [];
+  let seed = 0, cnt = 0;
+  for (let i = 0; i < data.length; i++) {
+    if (cnt < period) {
+      seed += data[i]; cnt++;
+      result.push(cnt===period ? seed/period : null);
+    } else {
+      const prev = result[i-1];
+      result.push(data[i]*k + prev*(1-k));
+    }
+  }
+  return result;
+}
+function calcRSI(data, period=7) {
+  const result = Array(period).fill(null);
+  let ag=0, al=0;
+  for (let i=1;i<=period;i++){const d=data[i]-data[i-1];if(d>0)ag+=d;else al-=d;}
+  ag/=period; al/=period;
+  result.push(al===0?100:100-100/(1+ag/al));
+  for(let i=period+1;i<data.length;i++){
+    const d=data[i]-data[i-1];
+    ag=(ag*(period-1)+Math.max(d,0))/period;
+    al=(al*(period-1)+Math.max(-d,0))/period;
+    result.push(al===0?100:100-100/(1+ag/al));
+  }
+  return result;
+}
+function calcMACD(data) {
+  const fast=calcEMA(data,12),slow=calcEMA(data,26);
+  const line=data.map((_,i)=>fast[i]!=null&&slow[i]!=null?fast[i]-slow[i]:null);
+  const valid=line.filter(v=>v!==null);
+  const sr=calcEMA(valid,9);
+  let si=0;
+  const signal=line.map(v=>v===null?null:(sr[si++]??null));
+  return{line,signal};
+}
+function calcATR(h,l,c,p=14) {
+  const tr=h.map((hi,i)=>i===0?hi-l[i]:Math.max(hi-l[i],Math.abs(hi-c[i-1]),Math.abs(l[i]-c[i-1])));
+  const result=Array(p-1).fill(null);
+  let prev=tr.slice(0,p).reduce((a,b)=>a+b,0)/p;
+  result.push(prev);
+  for(let i=p;i<tr.length;i++){prev=(prev*(p-1)+tr[i])/p;result.push(prev);}
+  return result;
+}
+function calcSMA(data,p){return data.map((_,i)=>i<p-1?null:data.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p);}
+function calcVWAP(candles){
+  let cv=0,vol=0;
+  return candles.map(c=>{const tp=(c.h+c.l+c.c)/3;cv+=tp*c.v;vol+=c.v;return vol>0?cv/vol:null;});
+}
+function detectStructure(closes,lb=8){
+  const n=closes.length;
+  if(n<lb*3)return'neutral';
+  const sh=[],sl=[];
+  for(let i=lb;i<n-lb;i++){
+    const s=closes.slice(i-lb,i+lb+1);
+    if(closes[i]===Math.max(...s))sh.push({i,v:closes[i]});
+    if(closes[i]===Math.min(...s))sl.push({i,v:closes[i]});
+  }
+  if(sh.length>=2&&sl.length>=2){
+    const lh=sh.slice(-2),ll=sl.slice(-2);
+    if(lh[1].v>lh[0].v&&ll[1].v>ll[0].v)return'bull';
+    if(lh[1].v<lh[0].v&&ll[1].v<ll[0].v)return'bear';
+  }
+  return'neutral';
+}
+function detectDivergence(closes,rsiVals,lb=20){
+  const n=closes.length;
+  if(n<lb*2)return'none';
+  const rc=closes.slice(-lb),rr=rsiVals.slice(-lb).filter(v=>v!=null);
+  if(rr.length<lb/2)return'none';
+  const pd=rc[rc.length-1]-rc[0],rd=rr[rr.length-1]-rr[0];
+  if(pd<-50&&rd>3)return'bull';
+  if(pd>50&&rd<-3)return'bear';
+  return'none';
+}
+
+// ─── ALERTS ────────────────────────────────────────────
+async function toggleAlerts() {
+  if (!alertsOn) {
+    if ('Notification' in window) {
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        alertsOn = true;
+        document.getElementById('alert-btn').className = 'alert-btn on';
+        document.getElementById('alert-btn').textContent = '🔔 Alertas ON';
+        showNotif('BTC Dashboard', 'Alertas activadas ✅');
+      } else {
+        alertsOn = true; // still use sound+vibration
+        document.getElementById('alert-btn').className = 'alert-btn on';
+        document.getElementById('alert-btn').textContent = '🔔 Alertas ON';
+      }
+    } else {
+      alertsOn = true;
+      document.getElementById('alert-btn').className = 'alert-btn on';
+      document.getElementById('alert-btn').textContent = '🔔 Alertas ON';
+    }
+    initAudio();
+  } else {
+    alertsOn = false;
+    document.getElementById('alert-btn').className = 'alert-btn off';
+    document.getElementById('alert-btn').textContent = '🔔 Alertas OFF';
+  }
+}
+
+function initAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch {}
+  }
+}
+
+function playBeep(freq=880, dur=0.3, type='sine', vol=0.3) {
+  if (!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = type; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+  } catch {}
+}
+
+function playSignalAlert(isLong) {
+  if (!audioCtx) return;
+  if (isLong) {
+    playBeep(440, 0.15); 
+    setTimeout(()=>playBeep(660,0.15),180);
+    setTimeout(()=>playBeep(880,0.3),360);
+  } else {
+    playBeep(880,0.15);
+    setTimeout(()=>playBeep(660,0.15),180);
+    setTimeout(()=>playBeep(440,0.3),360);
+  }
+}
+
+function playWarningBeep() {
+  if (!audioCtx) return;
+  playBeep(660, 0.2, 'triangle', 0.2);
+}
+
+function vibrate(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch {}
+}
+
+function showNotif(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(title, {body, icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">₿</text></svg>'}); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// ─── WEBSOCKET ENGINE (funciona desde content:// Android)
+// ═══════════════════════════════════════════════════════
+
+// Buffers de velas en memoria
+let candles5m  = [];  // velas 5m — máx 200
+let candles15m = [];  // velas 15m — máx 60
+let ticker24h  = { last:0, change:0, high:0, low:0, vol:0 };
+
+let ws5m  = null;
+let ws15m = null;
+let wsTicker = null;
+let wsRetry5m  = 0;
+let wsRetry15m = 0;
+let dataReady  = false; // true cuando tenemos suficientes velas para calcular
+
+// Mostrar loader/contenido
+function showDashboard() {
+  document.getElementById('loader').style.display       = 'none';
+  document.getElementById('main-content').style.display = 'block';
+  document.getElementById('api-modal').style.display    = 'none';
+}
+
+function showLoaderMsg(msg) {
+  const l = document.getElementById('loader');
+  if (l) l.querySelector('span').textContent = msg;
+}
+
+// ── Parsear kline de WS a formato candle ──────────────
+function parseWsKline(k) {
+  return {
+    t: new Date(+k.t), o: +k.o, h: +k.h,
+    l: +k.l, c: +k.c, v: +k.v,
+    closed: k.x  // true si la vela cerró
+  };
+}
+
+// ── Upsert vela en buffer (reemplaza la última si está abierta) ──
+function upsertCandle(arr, candle, maxLen) {
+  if (arr.length === 0) { arr.push(candle); return; }
+  const last = arr[arr.length - 1];
+  // Misma vela si tienen el mismo timestamp de apertura
+  if (last.t.getTime() === candle.t.getTime()) {
+    arr[arr.length - 1] = candle; // actualizar en tiempo real
+  } else {
+    arr.push(candle);
+    if (arr.length > maxLen) arr.shift();
+  }
+}
+
+// ── Trigger compute cuando hay suficientes datos ───────
+let _computeTimer = null;
+function triggerCompute() {
+  if (candles5m.length < 30) return;
+  if (!dataReady) {
+    dataReady = true;
+    showDashboard();
+    updateApiIndicator();
+  }
+  // Debounce: no recalcular más de 1 vez por segundo
+  clearTimeout(_computeTimer);
+  _computeTimer = setTimeout(() => {
+    compute([...candles5m], [...candles15m], ticker24h);
+    checkPendingResults(candles5m);
+    startCountdown();
+  }, 500);
+}
+
+// ── WebSocket 5m klines ────────────────────────────────
+function connectWs5m() {
+  const url = `wss://fstream.binance.com/ws/${SYMBOL.toLowerCase()}@kline_5m`;
+  showLoaderMsg(`Conectando WebSocket 5m... (intento ${wsRetry5m + 1})`);
+  ws5m = new WebSocket(url);
+
+  ws5m.onopen = () => {
+    wsRetry5m = 0;
+    console.log('WS 5m conectado');
+    // Pedir historial REST si aún no tenemos velas
+    if (candles5m.length < 30) loadInitialKlines();
+  };
+
+  ws5m.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (!msg.k) return;
+    const candle = parseWsKline(msg.k);
+    upsertCandle(candles5m, candle, 200);
+    triggerCompute();
+    // Actualizar countdown
+    const sb = document.getElementById('sb-next');
+    if (sb) {
+      const secLeft = Math.ceil((+msg.k.T - Date.now()) / 1000);
+      sb.textContent = Math.max(0, secLeft) + 's';
+    }
+  };
+
+  ws5m.onerror = () => console.warn('WS 5m error');
+  ws5m.onclose = () => {
+    console.warn('WS 5m cerrado, reintentando...');
+    wsRetry5m++;
+    const delay = Math.min(1000 * wsRetry5m, 10000);
+    setTimeout(connectWs5m, delay);
+  };
+}
+
+// ── WebSocket 15m klines ───────────────────────────────
+function connectWs15m() {
+  const url = `wss://fstream.binance.com/ws/${SYMBOL.toLowerCase()}@kline_15m`;
+  ws15m = new WebSocket(url);
+
+  ws15m.onopen = () => { wsRetry15m = 0; };
+
+  ws15m.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (!msg.k) return;
+    upsertCandle(candles15m, parseWsKline(msg.k), 60);
+  };
+
+  ws15m.onerror = () => {};
+  ws15m.onclose = () => {
+    wsRetry15m++;
+    setTimeout(connectWs15m, Math.min(1000 * wsRetry15m, 10000));
+  };
+}
+
+// ── WebSocket ticker 24h ───────────────────────────────
+function connectWsTicker() {
+  const url = `wss://fstream.binance.com/ws/${SYMBOL.toLowerCase()}@ticker`;
+  wsTicker = new WebSocket(url);
+
+  wsTicker.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    ticker24h = {
+      last:   +d.c,
+      change: +d.P,
+      high:   +d.h,
+      low:    +d.l,
+      vol:    +d.v
+    };
+    // Actualizar precio en header en tiempo real
+    if (d.c) {
+      prevPrice = +d.c;
+      const el = document.getElementById('price-display');
+      if (el && !dataReady) {
+        el.textContent = '$' + (+d.c).toFixed(1);
+      }
+    }
+  };
+  wsTicker.onerror = () => {};
+  wsTicker.onclose = () => setTimeout(connectWsTicker, 3000);
+}
+
+// ── Cargar historial inicial via REST (con fallback proxies) ──
+async function loadInitialKlines() {
+  const proxies = [
+    (url) => url,
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  ];
+
+  const base5m  = `https://fapi.binance.com/fapi/v1/klines?symbol=${SYMBOL}&interval=5m&limit=200`;
+  const base15m = `https://fapi.binance.com/fapi/v1/klines?symbol=${SYMBOL}&interval=15m&limit=60`;
+  const baseTk  = `https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${SYMBOL}`;
+
+  for (const proxy of proxies) {
+    try {
+      showLoaderMsg('Cargando historial de velas...');
+      const [k5, k15, tk] = await Promise.all([
+        fetch(proxy(base5m)).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); }),
+        fetch(proxy(base15m)).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); }),
+        fetch(proxy(baseTk)).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); }),
+      ]);
+
+      candles5m  = k5.map(k => ({ t:new Date(+k[0]), o:+k[1], h:+k[2], l:+k[3], c:+k[4], v:+k[5] }));
+      candles15m = k15.map(k => ({ t:new Date(+k[0]), o:+k[1], h:+k[2], l:+k[3], c:+k[4], v:+k[5] }));
+      ticker24h  = { last:+tk.lastPrice, change:+tk.priceChangePercent, high:+tk.highPrice, low:+tk.lowPrice, vol:+tk.volume };
+
+      console.log(`Historial cargado via proxy ${proxies.indexOf(proxy)}: ${candles5m.length} velas`);
+      triggerCompute();
+      return; // éxito
+    } catch(e) {
+      console.warn('Proxy falló:', e.message);
+    }
+  }
+
+  // Si todos los proxies fallaron, construir historial desde WS acumulado
+  console.warn('REST falló — esperando acumular velas por WS');
+  showLoaderMsg('Sin REST · Acumulando velas en tiempo real...');
+}
+
+// ── fetchData y tryFetch — mantenidos por compatibilidad ──
+async function tryFetch(path) {
+  // Ahora solo se usa para binancePrivate (API privada), no para datos públicos
+  const url = 'https://fapi.binance.com' + path;
+  const res = await fetch(url, { mode: 'cors' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+async function fetchData() {
+  // No-op: reemplazado por WebSocket. Mantenido por compatibilidad.
+}
+
+// ─── CHECK PENDING SIGNAL RESULTS ──────────────────────
+function checkPendingResults(candles) {
+  const price = candles[candles.length-1].c;
+  // Also check against candle highs/lows for intra-candle touches
+  const lastCandle = candles[candles.length-1];
+  let changed = false;
+
+  STATE.signalLog.forEach(entry => {
+    if (entry.result !== 'pending') return;
+    const isLong = entry.direction === 'LONG';
+
+    // Use candle high/low to detect if TP or SL was touched this candle
+    const candleHigh = lastCandle.h;
+    const candleLow  = lastCandle.l;
+
+    const hitTP = isLong ? candleHigh >= entry.tp1 : candleLow  <= entry.tp1;
+    const hitSL = isLong ? candleLow  <= entry.sl  : candleHigh >= entry.sl;
+
+    if (hitTP || hitSL) {
+      // If both hit same candle, whichever is closer to open wins
+      let result, exitReason, exitPrice;
+      if (hitTP && hitSL) {
+        // Ambiguous candle — use direction from open to determine which hit first
+        const openedBull = lastCandle.c >= lastCandle.o;
+        result     = (isLong && openedBull) || (!isLong && !openedBull) ? 'win' : 'loss';
+        exitReason = result === 'win' ? 'TP1' : 'SL';
+        exitPrice  = result === 'win' ? entry.tp1 : entry.sl;
+      } else if (hitTP) {
+        result = 'win'; exitReason = 'TP1'; exitPrice = entry.tp1;
+      } else {
+        result = 'loss'; exitReason = 'SL'; exitPrice = entry.sl;
+      }
+
+      entry.result     = result;
+      entry.exitPrice  = exitPrice;
+      entry.exitReason = exitReason;
+
+      if (result === 'win') STATE.wins++;
+      else STATE.losses++;
+
+      adjustWeights(entry.theoryPasses, result);
+      changed = true;
+
+      // Calc actual USD PnL
+      const pnlPts = Math.abs(exitPrice - entry.entryPrice);
+      const pnlUSD = (POSITION_SIZE / entry.entryPrice) * pnlPts;
+
+      if (alertsOn) {
+        const msg = result==='win'
+          ? `✅ TP1 TOCADO · +$${pnlUSD.toFixed(0)} USD`
+          : `❌ SL TOCADO · -$${pnlUSD.toFixed(0)} USD`;
+        showNotif('BTC · Señal cerrada', msg);
+        if (result==='win') { playBeep(880,0.5,'sine',0.4); vibrate([200,100,200]); }
+        else { playBeep(220,0.5,'sawtooth',0.3); vibrate([500]); }
+      }
+    } else {
+      // Still open — update live PnL using current price
+      const moved = isLong ? price - entry.entryPrice : entry.entryPrice - price;
+      entry.livePnl = moved;
+      const pnlUSD = (POSITION_SIZE / entry.entryPrice) * moved;
+      entry.livePnlUSD = pnlUSD;
+    }
+  });
+
+  if (changed) saveState(STATE);
+  updatePerformanceUI();
+}
+
+// ─── WEIGHT ADJUSTMENT (auto-correction) ───────────────
+function adjustWeights(passes, result) {
+  const keys = ['t1','t2','t3','t4','t5','t6','t7'];
+  const isWin = result === 'win';
+  keys.forEach((k,i) => {
+    const wasActive = passes[i];
+    if (wasActive) {
+      if (isWin) {
+        STATE.theoryStats[k].w++;
+        STATE.theoryWeights[k] = Math.min(3.0, STATE.theoryWeights[k] * 1.05);
+      } else {
+        STATE.theoryStats[k].l++;
+        STATE.theoryWeights[k] = Math.max(0.3, STATE.theoryWeights[k] * 0.92);
+      }
+    }
+  });
+  // Normalize weights so they sum to ~11
+  const total = Object.values(STATE.theoryWeights).reduce((a,b)=>a+b,0);
+  const target = 11;
+  Object.keys(STATE.theoryWeights).forEach(k => {
+    STATE.theoryWeights[k] = parseFloat((STATE.theoryWeights[k] * target / total).toFixed(3));
+  });
+  saveState(STATE);
+}
+
+// ─── CORE COMPUTE ──────────────────────────────────────
+function compute(candles, candles15, ticker) {
+  const closes=candles.map(c=>c.c),highs=candles.map(c=>c.h),lows=candles.map(c=>c.l),vols=candles.map(c=>c.v);
+  const n=closes.length-1;
+  const ema15=calcEMA(closes,15),ema60=calcEMA(closes,60),ema99=calcEMA(closes,99);
+  const rsi7=calcRSI(closes,7);
+  const{line:ml,signal:ms}=calcMACD(closes);
+  const atr14=calcATR(highs,lows,closes,14);
+  const volSma=calcSMA(vols,10);
+  const vwap=calcVWAP(candles);
+  const price=candles[n].c;
+  const e15=ema15[n],e60=ema60[n],e99=ema99[n];
+  const rsi=rsi7[n],macd=ml[n],macdS=ms[n],pMacd=ml[n-1],pMacdS=ms[n-1];
+  const atr=atr14[n],vol=vols[n],volSma10=volSma[n],vw=vwap[n];
+  const macdCrossUp=pMacd!=null&&pMacdS!=null&&pMacd<pMacdS&&macd>macdS;
+  const macdCrossDown=pMacd!=null&&pMacdS!=null&&pMacd>pMacdS&&macd<macdS;
+  const macdBull=macd!=null&&macdS!=null&&macd>macdS;
+  const macdBear=macd!=null&&macdS!=null&&macd<macdS;
+  const closes15=candles15.map(c=>c.c),n15=closes15.length-1;
+  const e15_15=calcEMA(closes15,15),e60_15=calcEMA(closes15,60);
+  const dow15Bull=e15_15[n15]!=null&&e60_15[n15]!=null&&e15_15[n15]>e60_15[n15];
+  const dow15Bear=e15_15[n15]!=null&&e60_15[n15]!=null&&e15_15[n15]<e60_15[n15];
+
+  // ── FILTER 1: 15M TREND ─────────────────────────────
+  // Only LONG if 15M EMA15 > EMA60 (uptrend on higher timeframe)
+  // Only SHORT if 15M EMA15 < EMA60 (downtrend on higher timeframe)
+  const trend15mBull = dow15Bull;
+  const trend15mBear = dow15Bear;
+
+  // ── FILTER 2: DISTANCE FROM 24H HIGH/LOW ────────────
+  // No LONG if price is more than 1% below 24h high (falling day)
+  const pctBelowHigh = (ticker.high - price) / ticker.high * 100;
+  const pctAboveLow  = (price - ticker.low)  / ticker.low  * 100;
+  const tooFarBelowHigh = pctBelowHigh > 2.0; // price fell >2% from daily high
+  const tooFarAboveLow  = pctAboveLow  > 2.0; // price rose >2% from daily low
+
+  // ── FILTER 3: 15M MACD CONFIRMATION ─────────────────
+  // Require 15M MACD to be positive for LONG, negative for SHORT
+  const {line:macdLine15, signal:macdSig15} = calcMACD(closes15);
+  const macd15Bull = macdLine15[n15] != null && macdSig15[n15] != null && macdLine15[n15] > macdSig15[n15];
+  const macd15Bear = macdLine15[n15] != null && macdSig15[n15] != null && macdLine15[n15] < macdSig15[n15];
+
+  // ── FILTER 4: ATR COMPRESSION ────────────────────────
+  const atrSMA30 = calcSMA(atr14.filter(Boolean), 30);
+  const avgATR30 = atrSMA30[atrSMA30.length-1] || atr14[n] || 100;
+  const filterATRCompress = !!(atr14[n] && atr14[n] < avgATR30 * 0.4);
+  const struct=detectStructure(closes,8),struct15=detectStructure(closes15,5);
+  const diverg=detectDivergence(closes,rsi7,20);
+  const volOk=volSma10?vol>volSma10*0.85:true,volStrong=volSma10?vol>volSma10*1.3:false;
+
+  // ── SHARE DATA WITH PROTOCOL PANEL ──────────────────
+  _lastATR       = atr;
+  _lastSwingHigh = Math.max(...highs.slice(-20));
+  _lastSwingLow  = Math.min(...lows.slice(-20));
+  updateProtoLevels();
+
+  const w=STATE.theoryWeights;
+
+  // LONG theories
+  const LT = [
+    {k:'t1',name:'1. Tendencia EMAs 5M',   pass:e15&&e60&&price>e15&&e15>e60,         detail:e15&&e60?`P${price>e15?'>':'<'}EMA15 · EMA15${e15>e60?'>':'<'}EMA60`:'Sin datos', w:w.t1},
+    {k:'t2',name:'2. Momentum RSI(7)',      pass:rsi!=null&&rsi>45&&rsi<70,             detail:rsi!=null?`RSI ${rsi.toFixed(1)} ${rsi>45&&rsi<70?'✓ zona sana':'✗ fuera rango'}`:'Sin datos', w:w.t2},
+    {k:'t3',name:'3. MACD cruce/posición',  pass:macdCrossUp||(macdBull&&macd>0),      detail:macd!=null?`DIF:${macd.toFixed(0)} DEA:${macdS?.toFixed(0)} ${macdCrossUp?'CRUCE ↑':macdBull?'DIF>DEA':'DIF<DEA'}`:'Sin datos', w:w.t3},
+    {k:'t4',name:'4. VWAP Institucional',   pass:vw!=null&&price>vw,                   detail:vw!=null?`P ${price>vw?'SOBRE':'BAJO'} VWAP $${vw.toFixed(0)}`:'Sin datos', w:w.t4},
+    {k:'t5',name:'5. Estructura mercado',   pass:struct==='bull'||struct15==='bull',    detail:`5M:${struct==='bull'?'HH/HL ✓':struct==='bear'?'LH/LL ✗':'Lateral'} 15M:${struct15==='bull'?'HH/HL ✓':'—'}`, w:w.t5},
+    {k:'t6',name:'6. Teoría de Dow 15M',    pass:dow15Bull,                             detail:`EMA15(15M)${dow15Bull?'>':'<'}EMA60(15M) ${dow15Bull?'alcista ✓':'bajista ✗'}`, w:w.t6},
+    {k:'t7',name:'7. Volumen+Divergencia',  pass:volOk&&(diverg==='bull'||diverg==='none'), detail:`Vol ${volSma10?(vol/volSma10).toFixed(1)+'x':'ok'} · Div:${diverg==='bull'?'ALCISTA ✓':diverg==='bear'?'BAJISTA ✗':'ninguna'}`, w:w.t7},
+  ];
+  // SHORT theories
+  const ST = [
+    {k:'t1',name:'1. Tendencia EMAs 5M',   pass:e15&&e60&&price<e15&&e15<e60,         detail:e15&&e60?`P${price<e15?'<':'>'}EMA15 · EMA15${e15<e60?'<':'>'}EMA60`:'Sin datos', w:w.t1},
+    {k:'t2',name:'2. Momentum RSI(7)',      pass:rsi!=null&&rsi<55&&rsi>30,             detail:rsi!=null?`RSI ${rsi.toFixed(1)} ${rsi<55&&rsi>30?'✓ zona sana':'✗ fuera rango'}`:'Sin datos', w:w.t2},
+    {k:'t3',name:'3. MACD cruce/posición',  pass:macdCrossDown||(macdBear&&macd<0),    detail:macd!=null?`DIF:${macd.toFixed(0)} DEA:${macdS?.toFixed(0)} ${macdCrossDown?'CRUCE ↓':macdBear?'DIF<DEA':'DIF>DEA'}`:'Sin datos', w:w.t3},
+    {k:'t4',name:'4. VWAP Institucional',   pass:vw!=null&&price<vw,                   detail:vw!=null?`P ${price<vw?'BAJO':'SOBRE'} VWAP $${vw.toFixed(0)}`:'Sin datos', w:w.t4},
+    {k:'t5',name:'5. Estructura mercado',   pass:struct==='bear'||struct15==='bear',    detail:`5M:${struct==='bear'?'LH/LL ✓':struct==='bull'?'HH/HL ✗':'Lateral'} 15M:${struct15==='bear'?'LH/LL ✓':'—'}`, w:w.t5},
+    {k:'t6',name:'6. Teoría de Dow 15M',    pass:dow15Bear,                             detail:`EMA15(15M)${dow15Bear?'<':'>'}EMA60(15M) ${dow15Bear?'bajista ✓':'alcista ✗'}`, w:w.t6},
+    {k:'t7',name:'7. Volumen+Divergencia',  pass:volOk&&(diverg==='bear'||diverg==='none'), detail:`Vol ${volSma10?(vol/volSma10).toFixed(1)+'x':'ok'} · Div:${diverg==='bear'?'BAJISTA ✓':diverg==='bull'?'ALCISTA ✗':'ninguna'}`, w:w.t7},
+  ];
+
+  function score(theories){
+    const tot=theories.reduce((a,t)=>a+t.w,0);
+    const pass=theories.filter(t=>t.pass).reduce((a,t)=>a+t.w,0);
+    return tot>0?pass/tot:0;
+  }
+  const lScore=score(LT),sScore=score(ST);
+  const isLong=lScore>=sScore;
+  const bestScore=Math.max(lScore,sScore);
+  const certPct=Math.round(bestScore*100);
+  const activeT=isLong?LT:ST;
+
+  // ── 24H HIGH/LOW PROXIMITY FILTER ──────────────────
+  // Block entries when price is within 0.5% of 24h high (for LONG) or 24h low (for SHORT)
+  const high24h = ticker.high;
+  const low24h  = ticker.low;
+  const pctFromHigh = (high24h - price) / high24h * 100;
+  const pctFromLow  = (price - low24h)  / low24h  * 100;
+  const nearHigh24 = pctFromHigh < 0.3; // within 0.3% of 24h high
+  const nearLow24  = pctFromLow  < 0.3; // within 0.3% of 24h low
+
+  // ── ANTI-SPIKE FILTER ──────────────────────────────
+  // Block entries when price moved too much too fast (buying tops / selling bottoms)
+  const last5closes  = closes.slice(-5);
+  const last10closes = closes.slice(-10);
+  const last3closes  = closes.slice(-3);
+
+  // % move in last 3 candles (15 min)
+  const move3pct  = Math.abs(last3closes[last3closes.length-1] - last3closes[0]) / last3closes[0] * 100;
+  // % move in last 5 candles (25 min)
+  const move5pct  = Math.abs(last5closes[last5closes.length-1] - last5closes[0]) / last5closes[0] * 100;
+  // % move in last 10 candles (50 min)
+  const move10pct = Math.abs(last10closes[last10closes.length-1] - last10closes[0]) / last10closes[0] * 100;
+
+  // Direction of recent move
+  const recentBull = last5closes[last5closes.length-1] > last5closes[0];
+  const recentBear = last5closes[last5closes.length-1] < last5closes[0];
+
+  // Spike thresholds (ATR-based: if move > 2.5x ATR in 5 candles = spike)
+  const atrPct = (atr||0) / price * 100;
+  const spikeThreshold = atrPct * 2.5;
+
+  // Anti-spike: block LONG if price just spiked up, block SHORT if price just spiked down
+  const spikedUp   = recentBull && move5pct > spikeThreshold;
+  const spikedDown = recentBear && move5pct > spikeThreshold;
+
+  // Also block if RSI(7) > 78 for LONG or < 22 for SHORT (extreme momentum = exhaustion)
+  const rsiExtreme = (rsi > 78) || (rsi < 22);
+
+  // Consolidation check: last 3 candles range < 0.3x ATR = price is settling after spike
+  const last3range = Math.max(...last3closes) - Math.min(...last3closes);
+  const isConsolidating = last3range < atr * 0.3;
+
+  // Final spike block
+  const spikeBlockLong  = spikedUp   && !isConsolidating;
+  const spikeBlockShort = spikedDown && !isConsolidating;
+
+  const THR      = SIGNAL_THRESHOLD / 100;
+  const THR_WATCH = Math.max(THR - 0.15, 0.50); // watch zone = threshold - 15%
+
+  // ── UPDATE PROTOCOL GLOBALS ──────────────────────────
+  _lastSignalDir = isLong ? 'LONG' : 'SHORT';
+  _lastCertPct   = certPct;
+  updateProtoLevels();
+  updateProtoButtons(protoChecks.every(Boolean));
+
+  // ── COMBINED FILTER BLOCKS ──────────────────────────
+  // LONG blocked if: spike, near 24h high, 15M downtrend, too far below high, or 15M MACD bearish
+  const blockLong  = spikeBlockLong || nearHigh24 || !trend15mBull || !macd15Bull || filterATRCompress;
+  const blockShort = spikeBlockShort || nearLow24 || !trend15mBear || !macd15Bear || filterATRCompress;
+
+  let signal='NEUTRAL';
+  if(lScore>=THR && !blockLong)               signal='LONG';
+  else if(sScore>=THR && !blockShort)         signal='SHORT';
+  else if(lScore>=THR_WATCH && !blockLong)    signal='LONG_WATCH';
+  else if(sScore>=THR_WATCH && !blockShort)   signal='SHORT_WATCH';
+  else if(spikeBlockLong && lScore>=THR)      signal='SPIKE_LONG';
+  else if(spikeBlockShort && sScore>=THR)     signal='SPIKE_SHORT';
+  else if(nearHigh24 && lScore>=THR)                          signal='NEAR_HIGH';
+  else if(nearLow24  && sScore>=THR)                          signal='NEAR_LOW';
+  else if((!trend15mBull||!macd15Bull) && lScore>=THR)        signal='FILTER_15M';
+  else if((!trend15mBear||!macd15Bear) && sScore>=THR)        signal='FILTER_15M';
+  else if(tooFarBelowHigh && lScore>=THR)                     signal='FILTER_DIST';
+  else if(tooFarAboveLow  && sScore>=THR)                     signal='FILTER_DIST';
+
+  // Convenience flag used in render
+  const _spikeBlock = ['SPIKE_LONG','SPIKE_SHORT','NEAR_HIGH','NEAR_LOW','FILTER_15M','FILTER_DIST'].includes(signal);
+
+  // ── ALERTS ──
+  const wasBelow80 = lastCertPct < 80;
+  const nowAbove75 = certPct >= (SIGNAL_THRESHOLD-5) && certPct < SIGNAL_THRESHOLD;
+  const nowAbove80 = certPct >= SIGNAL_THRESHOLD;
+
+  if (alertsOn) {
+    // Warning at 75%
+    if (wasBelow80 && nowAbove75 && lastCertPct < 75) {
+      playWarningBeep();
+      vibrate([100,50,100]);
+      showNotif('BTC ⚠️ Señal próxima', `Certeza: ${certPct}% · Falta ${SIGNAL_THRESHOLD-certPct}% · ${isLong?'LONG':'SHORT'}`);
+    }
+    // Full signal at 80%
+    // Show/hide pause button based on API connection
+  const pw = document.getElementById('autotrade-wrap');
+  if (pw) pw.style.display = apiEnabled ? 'block' : 'none';
+  const tw = document.getElementById('api-test-wrap');
+  if (tw) tw.style.display = apiEnabled ? 'block' : 'none';
+  const bw = document.getElementById('bsync-wrap');
+  if (bw && apiEnabled) bw.style.display = 'block';
+  const ow = document.getElementById('trade-options-wrap');
+  if (ow && apiEnabled) ow.style.display = 'block';
+  const mw = document.getElementById('manual-wrap');
+  if (mw) mw.style.display = apiEnabled ? 'block' : 'none';
+  // Update manual order buttons state
+  const hasPos = !!activePosition && !allowMultiple;
+  const longBtn  = document.getElementById('btn-manual-long');
+  const shortBtn = document.getElementById('btn-manual-short');
+  const posNote  = document.getElementById('manual-position-note');
+  if (longBtn)  longBtn.disabled  = hasPos;
+  if (shortBtn) shortBtn.disabled = hasPos;
+  if (posNote)  posNote.style.display = (!!activePosition && !allowMultiple) ? 'inline' : 'none';
+  updateManualInfo();
+
+  // Auto-trade when signal activates
+  const isValidSignal = (signal==='LONG'||signal==='SHORT') && !_spikeBlock && certPct>=SIGNAL_THRESHOLD;
+  if (isValidSignal && signal !== lastSignal) {
+    if (apiEnabled && !autotradePaused && (!activePosition || allowMultiple)) {
+      openPosition(signal==='LONG' ? 'BUY' : 'SELL');
+      document.getElementById('manual-exec-wrap').style.display = 'none';
+    } else if (!activePosition || allowMultiple) {
+      // Signal fired but not taken — show manual execute button
+      lastMissedSignal = signal;
+      const wrap = document.getElementById('manual-exec-wrap');
+      const btn  = document.getElementById('manual-exec-btn');
+      const info = document.getElementById('manual-exec-info');
+      wrap.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = `⚡ EJECUTAR ${signal} AHORA`;
+      btn.style.borderColor = signal==='LONG' ? 'var(--green)' : 'var(--red2)';
+      btn.style.background  = signal==='LONG' ? 'rgba(0,230,118,0.07)' : 'rgba(255,23,68,0.07)';
+      btn.style.color       = signal==='LONG' ? 'var(--green)' : 'var(--red2)';
+      const reason = !apiEnabled ? 'API no conectada' : autotradePaused ? 'Auto-trade pausado' : 'Ya hay posición abierta';
+      info.textContent = `Señal ${signal} ${certPct}% no tomada automáticamente · ${reason}`;
+    }
+  }
+
+  // Hide manual button if signal changed or position opened
+  if (signal !== 'LONG' && signal !== 'SHORT') {
+    document.getElementById('manual-exec-wrap').style.display = 'none';
+  }
+
+  if (signal !== lastSignal && (signal==='LONG'||signal==='SHORT') && !_spikeBlock) {
+      playSignalAlert(signal==='LONG');
+      vibrate([200,100,200,100,400]);
+      showNotif(`BTC 🚨 ${signal} ACTIVO`, `Certeza: ${certPct}% · Entrada: $${price.toFixed(0)} · SL: $${(signal==='SHORT'?price+atr*1.5:price-atr*1.5).toFixed(0)}`);
+      document.getElementById('signal-box').classList.add('flashing');
+      setTimeout(()=>document.getElementById('signal-box').classList.remove('flashing'),1500);
+    }
+  }
+
+  // ── LOG NEW SIGNAL ──
+  // Show/hide pause button based on API connection
+  const pw = document.getElementById('autotrade-wrap');
+  if (pw) pw.style.display = apiEnabled ? 'block' : 'none';
+  const tw = document.getElementById('api-test-wrap');
+  if (tw) tw.style.display = apiEnabled ? 'block' : 'none';
+  const bw = document.getElementById('bsync-wrap');
+  if (bw && apiEnabled) bw.style.display = 'block';
+  const ow = document.getElementById('trade-options-wrap');
+  if (ow && apiEnabled) ow.style.display = 'block';
+  const mw = document.getElementById('manual-wrap');
+  if (mw) mw.style.display = apiEnabled ? 'block' : 'none';
+  // Update manual order buttons state
+  const hasPos = !!activePosition && !allowMultiple;
+  const longBtn  = document.getElementById('btn-manual-long');
+  const shortBtn = document.getElementById('btn-manual-short');
+  const posNote  = document.getElementById('manual-position-note');
+  if (longBtn)  longBtn.disabled  = hasPos;
+  if (shortBtn) shortBtn.disabled = hasPos;
+  if (posNote)  posNote.style.display = (!!activePosition && !allowMultiple) ? 'inline' : 'none';
+  updateManualInfo();
+
+  // Auto-trade when signal activates
+  const isValidSignal = (signal==='LONG'||signal==='SHORT') && !_spikeBlock && certPct>=SIGNAL_THRESHOLD;
+  if (isValidSignal && signal !== lastSignal) {
+    if (apiEnabled && !autotradePaused && (!activePosition || allowMultiple)) {
+      openPosition(signal==='LONG' ? 'BUY' : 'SELL');
+      document.getElementById('manual-exec-wrap').style.display = 'none';
+    } else if (!activePosition || allowMultiple) {
+      // Signal fired but not taken — show manual execute button
+      lastMissedSignal = signal;
+      const wrap = document.getElementById('manual-exec-wrap');
+      const btn  = document.getElementById('manual-exec-btn');
+      const info = document.getElementById('manual-exec-info');
+      wrap.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = `⚡ EJECUTAR ${signal} AHORA`;
+      btn.style.borderColor = signal==='LONG' ? 'var(--green)' : 'var(--red2)';
+      btn.style.background  = signal==='LONG' ? 'rgba(0,230,118,0.07)' : 'rgba(255,23,68,0.07)';
+      btn.style.color       = signal==='LONG' ? 'var(--green)' : 'var(--red2)';
+      const reason = !apiEnabled ? 'API no conectada' : autotradePaused ? 'Auto-trade pausado' : 'Ya hay posición abierta';
+      info.textContent = `Señal ${signal} ${certPct}% no tomada automáticamente · ${reason}`;
+    }
+  }
+
+  // Hide manual button if signal changed or position opened
+  if (signal !== 'LONG' && signal !== 'SHORT') {
+    document.getElementById('manual-exec-wrap').style.display = 'none';
+  }
+
+  if (signal !== lastSignal && (signal==='LONG'||signal==='SHORT') && !_spikeBlock) {
+    const sl  = signal==='SHORT' ? price+atr*1.5 : price-atr*1.5;
+    const tp1 = signal==='SHORT' ? price-atr*2.0 : price+atr*2.0;
+    const tp2 = signal==='SHORT' ? price-atr*3.5 : price+atr*3.5;
+    STATE.signalLog.unshift({
+      time: new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),
+      timestamp: Date.now(),
+      direction: signal,
+      entryPrice: price,
+      sl, tp1, tp2,
+      certPct,
+      result: 'pending',
+      exitPrice: null,
+      theoryPasses: activeT.map(t=>t.pass)
+    });
+    if (STATE.signalLog.length > 20) STATE.signalLog.pop();
+    saveState(STATE);
+  }
+
+  lastSignal   = signal;
+  lastCertPct  = certPct;
+
+  // ── RENDER ──
+  // Monitor active position + run advisor
+  if (activePosition) {
+    monitorPosition(price);
+    // Sync real SL/TP from Binance every ~30 refreshes (90 seconds)
+    if (typeof _syncCounter === 'undefined') window._syncCounter = 0;
+    window._syncCounter++;
+    if (window._syncCounter % 30 === 0) syncRealSLTP();
+    // Pass indicators to advisor
+    analyzeActivePosition(price, {
+      rsi: rsiV[n],
+      macdLine: ml[n],
+      macdSig: ms[n],
+      ema15: ema15[n],
+      ema60: ema60[n],
+      atr: atr14[n],
+      vols, volSma: volSma[n],
+      closes
+    });
+  }
+
+  const priceEl=document.getElementById('price-display');
+  const dir=prevPrice?(price>prevPrice?'up':price<prevPrice?'down':'neutral'):'neutral';
+  priceEl.textContent='$'+price.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1});
+  priceEl.className='price-main '+dir;
+  prevPrice=price;
+  const chEl=document.getElementById('price-change');
+  chEl.textContent=(ticker.change>=0?'+':'')+ticker.change.toFixed(2)+'%';
+  chEl.className='price-change '+(ticker.change>=0?'up':'down');
+  document.getElementById('high24').textContent='$'+ticker.high.toLocaleString('en-US',{maximumFractionDigits:0});
+  document.getElementById('low24').textContent='$'+ticker.low.toLocaleString('en-US',{maximumFractionDigits:0});
+  document.getElementById('vol24').textContent=(ticker.vol/1000).toFixed(1)+'K';
+
+  // Certainty
+  const certEl=document.getElementById('cert-pct');
+  certEl.textContent=certPct+'%';
+  certEl.className='cert-pct '+(certPct>=80?'high':certPct>=60?'mid':'low');
+  document.getElementById('cert-fill').style.width=certPct+'%';
+  document.getElementById('cert-fill').style.background=certPct>=80?'linear-gradient(90deg,var(--green),var(--green2))':certPct>=60?'linear-gradient(90deg,var(--orange),var(--yellow))':'var(--red2)';
+  document.getElementById('cert-label').textContent=certPct>=80
+    ?`✅ SEÑAL VÁLIDA · ${isLong?'LONG':'SHORT'} · ${certPct}% certeza`
+    :certPct>=75?`⚠️ CASI · Falta ${80-certPct}% · Preparate`
+    :certPct>=60?`⚠️ INSUFICIENTE · Falta ${80-certPct}% para señal`
+    :`⛔ SIN SEÑAL · Solo ${certPct}% alineado`;
+
+  // Signal box
+  const smap={
+    LONG:        {icon:'🟢',label:'LONG ACTIVO',     desc:`${certPct}% certeza · Entrada válida`},
+    SHORT:       {icon:'🔴',label:'SHORT ACTIVO',    desc:`${certPct}% certeza · Entrada válida`},
+    LONG_WATCH:  {icon:'👁',label:'VIGILAR LONG',    desc:`${certPct}% · Falta ${SIGNAL_THRESHOLD-certPct}% · Esperar confirmación`},
+    SHORT_WATCH: {icon:'👁',label:'VIGILAR SHORT',   desc:`${certPct}% · Falta ${SIGNAL_THRESHOLD-certPct}% · Esperar confirmación`},
+    SPIKE_LONG:  {icon:'🚫',label:'SPIKE · NO LONG',  desc:`Precio subió ${move5pct.toFixed(2)}% en 5 velas · Entrar en pico es riesgoso · Esperar consolidación`},
+    SPIKE_SHORT: {icon:'🚫',label:'SPIKE · NO SHORT', desc:`Precio bajó ${move5pct.toFixed(2)}% en 5 velas · Entrar en pico es riesgoso · Esperar consolidación`},
+    NEAR_HIGH:   {icon:'🔝',label:'CERCA MÁXIMO 24H',  desc:`Precio a ${pctFromHigh.toFixed(2)}% del máximo $${(typeof high24h!='undefined'?high24h:0).toFixed(0)} · Riesgo rechazo`},
+    NEAR_LOW:    {icon:'🔻',label:'CERCA MÍNIMO 24H',  desc:`Precio a ${pctFromLow.toFixed(2)}% del mínimo $${(typeof low24h!='undefined'?low24h:0).toFixed(0)} · Riesgo rebote`},
+    FILTER_15M:  {icon:'📉',label:'FILTRO 15M ACTIVO', desc:`Tendencia 15M: ${(typeof trend15mBull!='undefined'&&trend15mBull)?'Alcista ✅':'Bajista ✗'} · MACD 15M: ${(typeof macd15Bull!='undefined'&&macd15Bull)?'Positivo ✅':'Negativo ✗'} · No operar contra tendencia mayor`},
+    FILTER_DIST: {icon:'📏',label:'LEJOS DEL RANGO',   desc:`Precio ${(typeof pctBelowHigh!='undefined'?pctBelowHigh:0).toFixed(2)}% bajo máximo diario · Mercado bajista hoy · Esperar recuperación`},
+    NEUTRAL:     {icon:'⚪',label:'SIN SEÑAL',        desc:`${certPct}% · Sin dirección confirmada`}
+  };
+  const s=smap[signal];
+  document.getElementById('signal-box').className='signal-box '+signal;
+  document.getElementById('signal-icon').textContent=s.icon;
+  document.getElementById('signal-label').textContent=s.label;
+  document.getElementById('signal-desc').textContent=s.desc;
+
+  // Theories
+  const ts=STATE.theoryStats;
+  document.getElementById('theories-list').innerHTML=activeT.map(t=>{
+    const stat=ts[t.k];
+    const total=stat.w+stat.l;
+    const wr=total>0?Math.round(stat.w/total*100):null;
+    const wrColor=wr===null?'var(--muted)':wr>=60?'var(--green)':wr>=40?'var(--yellow)':'var(--red2)';
+    return `<div class="theory-item ${t.pass?'pass':'fail'}">
+      <div class="theory-check">${t.pass?'✅':'❌'}</div>
+      <div class="theory-body">
+        <div class="theory-name">${t.name}</div>
+        <div class="theory-detail">${t.detail}</div>
+      </div>
+      <div class="theory-right">
+        <div class="theory-wr" style="color:${wrColor}">${wr!==null?wr+'%':'—'}</div>
+        <div class="theory-weight">w:${t.w.toFixed(2)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Levels
+  const fmt=n=>'$'+n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  const sl=signal==='SHORT'||signal==='SHORT_WATCH'?price+atr*1.5:price-atr*1.5;
+  const tp1=signal==='SHORT'||signal==='SHORT_WATCH'?price-atr*2.0:price+atr*2.0;
+  const tp2=signal==='SHORT'||signal==='SHORT_WATCH'?price-atr*3.5:price+atr*3.5;
+  const rr=Math.abs(tp1-price)/Math.abs(sl-price);
+  document.getElementById('lv-entry').textContent=fmt(price);
+  document.getElementById('lv-sl').textContent=fmt(sl);
+  document.getElementById('lv-tp1').textContent=fmt(tp1);
+  document.getElementById('lv-tp2').textContent=fmt(tp2);
+  document.getElementById('lv-rr').textContent=rr.toFixed(2)+':1';
+  document.getElementById('lv-atr').textContent='$'+(atr||0).toFixed(0);
+  document.getElementById('rr-fill').style.width=Math.min(rr/4*100,100)+'%';
+
+  // Chart
+  drawChart(candles.slice(-50),ema15.slice(-50),ema60.slice(-50),ema99.slice(-50));
+  drawVolBars(candles.slice(-30),vols.slice(-30));
+  const fc=candles[candles.length-50],lc=candles[candles.length-1];
+  if(fc) document.getElementById('chart-range').textContent=`${fc.t.getHours()}:${String(fc.t.getMinutes()).padStart(2,'0')}→${lc.t.getHours()}:${String(lc.t.getMinutes()).padStart(2,'0')}`;
+
+  // Performance
+  updatePerformanceUI();
+
+  // Status bar
+  document.getElementById('sb-price').textContent='$'+price.toFixed(0);
+  document.getElementById('sb-cert').textContent=certPct+'%';
+  const tot=STATE.wins+STATE.losses;
+  document.getElementById('sb-wr').textContent=tot>0?Math.round(STATE.wins/tot*100)+'%':'—';
+  document.getElementById('update-time').textContent='Act: '+new Date().toLocaleTimeString('es-AR');
+
+  // Signal log render
+  renderLog();
+}
+
+function updatePerformanceUI() {
+  const tot=STATE.wins+STATE.losses;
+  const wr=tot>0?Math.round(STATE.wins/tot*100):null;
+  document.getElementById('perf-wr').textContent=wr!==null?wr+'%':'—';
+  document.getElementById('perf-wr').style.color=wr===null?'var(--muted)':wr>=60?'var(--green)':wr>=40?'var(--yellow)':'var(--red2)';
+  document.getElementById('perf-total').textContent=STATE.signalLog.filter(e=>e.direction==='LONG'||e.direction==='SHORT').length;
+  document.getElementById('perf-wins').textContent=STATE.wins;
+  document.getElementById('perf-losses').textContent=STATE.losses;
+}
+
+function renderLog() {
+  const el=document.getElementById('signal-log');
+  const entries=STATE.signalLog.filter(e=>e.direction==='LONG'||e.direction==='SHORT');
+  if(!entries.length){el.innerHTML='<div style="font-size:10px;color:var(--muted);padding:8px 0;">Sin señales aún. Esperando 80%+...</div>';return;}
+  el.innerHTML=entries.slice(0,8).map(e=>{
+    const dir=e.direction==='LONG'?'bull':'bear';
+    const livePnlUSD = e.livePnlUSD != null ? e.livePnlUSD : 0;
+    const livePnlStr  = e.livePnlUSD != null
+      ? (livePnlUSD >= 0 ? `<span style="color:var(--green);font-weight:700">+$${livePnlUSD.toFixed(0)}</span>` : `<span style="color:var(--red2);font-weight:700">-$${Math.abs(livePnlUSD).toFixed(0)}</span>`)
+      : '';
+    const exitUSD = e.exitPrice ? Math.abs(e.exitPrice - e.entryPrice) * (POSITION_SIZE / e.entryPrice) : 0;
+    const resText = e.result==='pending'
+      ? `⏳ Abierta · PnL: ${livePnlStr} · TP:$${e.tp1?.toFixed(0)} SL:$${e.sl?.toFixed(0)}`
+      : e.result==='win'
+      ? `✅ ${e.exitReason} TOCADO @ $${e.exitPrice?.toFixed(0)} · +$${exitUSD.toFixed(0)}`
+      : `❌ ${e.exitReason} TOCADO @ $${e.exitPrice?.toFixed(0)} · -$${exitUSD.toFixed(0)}`;
+    const resClass = e.result==='pending'?'pending':e.result==='win'?'win':'loss';
+    return `<div class="log-entry">
+      <div class="log-top"><span class="log-signal ${dir}">${e.direction} ${e.certPct}%</span><span class="log-time">${e.time}</span></div>
+      <div class="log-detail">Entrada: $${e.entryPrice?.toFixed(0)} · SL: $${e.sl?.toFixed(0)} · TP1: $${e.tp1?.toFixed(0)}</div>
+      <div class="log-result ${resClass}">${resText}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── CHART ─────────────────────────────────────────────
+function drawChart(cands,e15,e60,e99){
+  const cv=document.getElementById('chart');
+  const dpr=window.devicePixelRatio||1,W=cv.offsetWidth||340,H=150;
+  cv.width=W*dpr;cv.height=H*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  const pad={t:6,b:18,l:50,r:6},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  const all=[...cands.map(c=>c.c),...e15.filter(Boolean),...e60.filter(Boolean),...e99.filter(Boolean)];
+  const minP=Math.min(...all)*0.9995,maxP=Math.max(...all)*1.0005;
+  const sy=v=>pad.t+ch-((v-minP)/(maxP-minP))*ch;
+  const sx=i=>pad.l+(i/(cands.length-1))*cw;
+  ctx.fillStyle='#080d14';ctx.fillRect(0,0,W,H);
+  for(let i=0;i<=3;i++){
+    const y=pad.t+(i/3)*ch;
+    ctx.strokeStyle='rgba(22,32,48,0.8)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
+    const val=maxP-((maxP-minP)*i/3);
+    ctx.fillStyle='#4a6a88';ctx.font='8px IBM Plex Mono';ctx.textAlign='right';
+    ctx.fillText('$'+val.toFixed(0),pad.l-3,y+3);
+  }
+  const bw=Math.max(2,(cw/cands.length)-1);
+  cands.forEach((c,i)=>{
+    const x=sx(i),up=c.c>=c.o;
+    ctx.strokeStyle=up?'#00e676':'#ff1744';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,sy(c.h));ctx.lineTo(x,sy(c.l));ctx.stroke();
+    const top=Math.min(sy(c.o),sy(c.c)),ht=Math.max(1,Math.abs(sy(c.o)-sy(c.c)));
+    ctx.fillStyle=up?'rgba(0,230,118,0.5)':'rgba(255,23,68,0.5)';
+    ctx.fillRect(x-bw/2,top,bw,ht);
+  });
+  const dl=(vals,color,dash=[])=>{
+    ctx.beginPath();ctx.setLineDash(dash);ctx.strokeStyle=color;ctx.lineWidth=1.2;
+    let s=false;
+    vals.forEach((v,i)=>{if(v==null)return;if(!s){ctx.moveTo(sx(i),sy(v));s=true;}else ctx.lineTo(sx(i),sy(v));});
+    ctx.stroke();ctx.setLineDash([]);
+  };
+  dl(e99,'#29b6f6');dl(e60,'#ff9100');dl(e15,'#ffd600',[3,3]);
+  ctx.fillStyle='#4a6a88';ctx.font='8px IBM Plex Mono';ctx.textAlign='center';
+  [0,12,24,37,49].forEach(i=>{
+    if(cands[i]){const t=cands[i].t;ctx.fillText(`${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`,sx(i),H-3);}
+  });
+}
+function drawVolBars(cands,vols){
+  const c=document.getElementById('vol-bars');c.innerHTML='';
+  const mx=Math.max(...vols);
+  cands.forEach((cv,i)=>{
+    const b=document.createElement('div');b.className='vol-bar';
+    b.style.height=Math.max(4,(vols[i]/mx)*100)+'%';
+    b.style.background=cv.c>=cv.o?'rgba(0,230,118,0.6)':'rgba(255,23,68,0.6)';
+    c.appendChild(b);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// ─── PANEL PROTOCOLO ───────────────────────────────────
+// ══════════════════════════════════════════════════════
+let protoChecks   = [false, false, false, false, false];
+let protoRisk     = 1; // %
+let protoOpen     = true;
+let pendingExecSide = null; // 'BUY' or 'SELL'
+
+function toggleProto() {
+  protoOpen = !protoOpen;
+  document.getElementById('proto-body').classList.toggle('open', protoOpen);
+  document.getElementById('proto-arrow').textContent = protoOpen ? '▲' : '▼';
+}
+
+function togglePC(i) {
+  protoChecks[i] = !protoChecks[i];
+  const el = document.getElementById('pc' + i);
+  el.classList.toggle('on',  protoChecks[i]);
+  el.classList.toggle('off', !protoChecks[i]);
+  updateProtoScore();
+  updateProtoLevels();
+}
+
+function setProtoRisk(v) {
+  protoRisk = v;
+  document.querySelectorAll('.proto-risk-btn').forEach(b => {
+    b.classList.toggle('active', parseFloat(b.textContent) === v);
+  });
+  updateProtoLevels();
+}
+
+function updateProtoScore() {
+  const done  = protoChecks.filter(Boolean).length;
+  const total = protoChecks.length;
+  const pct   = done / total;
+  const allOk = done === total;
+  const color = allOk ? 'var(--green)' : done >= 3 ? 'var(--yellow)' : 'var(--red2)';
+
+  document.getElementById('proto-score-num').textContent = done;
+  document.getElementById('proto-score-num').style.color = color;
+  document.getElementById('proto-circle').style.borderColor = color;
+  document.getElementById('proto-bar').style.width = (pct * 100) + '%';
+  document.getElementById('proto-bar').style.background = color;
+
+  if (allOk) {
+    document.getElementById('proto-score-title').textContent = '✅ CHECKLIST COMPLETO';
+    document.getElementById('proto-score-title').style.color = 'var(--green)';
+    document.getElementById('proto-score-sub').textContent   = 'Condiciones cumplidas para operar';
+  } else {
+    document.getElementById('proto-score-title').textContent = `${done}/5 puntos completados`;
+    document.getElementById('proto-score-title').style.color = color;
+    document.getElementById('proto-score-sub').textContent   = `Faltan ${total - done} punto(s) del checklist`;
+  }
+
+  updateProtoBadge(allOk);
+  updateProtoButtons(allOk);
+}
+
+function updateProtoBadge(allOk) {
+  const badge = document.getElementById('proto-badge');
+  if (allOk) {
+    badge.textContent = 'LISTO';
+    badge.style.background   = 'rgba(0,230,118,0.15)';
+    badge.style.color        = 'var(--green)';
+    badge.style.border       = '1px solid rgba(0,230,118,0.3)';
+  } else {
+    badge.textContent = 'NO OPERABLE';
+    badge.style.background   = 'rgba(255,23,68,0.15)';
+    badge.style.color        = 'var(--red2)';
+    badge.style.border       = '1px solid rgba(255,23,68,0.3)';
+  }
+}
+
+function updateProtoButtons(allOk) {
+  const hasApi  = activeExchange === 'bybit' ? bybitEnabled : apiEnabled;
+  const hasPos  = !!activePosition && !allowMultiple;
+  const enabled = allOk && hasApi && !hasPos;
+
+  const longBtn  = document.getElementById('proto-btn-long');
+  const shortBtn = document.getElementById('proto-btn-short');
+  longBtn.disabled  = !enabled;
+  shortBtn.disabled = !enabled;
+
+  const info = document.getElementById('proto-exec-info');
+  const exName = activeExchange === 'bybit' ? 'Bybit' : 'Binance';
+  if (!hasApi)     info.textContent = `⚠️ Conectá ${exName} primero`;
+  else if (hasPos) info.textContent = '⚠️ Ya hay una posición abierta';
+  else if (!allOk) info.textContent = `Completá los ${protoChecks.filter(Boolean).length}/5 puntos del checklist`;
+  else             info.textContent = `✅ Listo · Ejecutar en ${exName}`;
+}
+
+function updateProtoLevels() {
+  const price = prevPrice;
+  if (!price) return;
+
+  const cap     = parseFloat(document.getElementById('proto-capital').value) || 1000;
+  const riskAmt = cap * (protoRisk / 100);
+  const atr     = _lastATR || price * 0.003; // fallback 0.3%
+
+  // SL = swing low/high or ATR-based
+  const slLong  = _lastSwingLow  || (price - atr * 1.5);
+  const slShort = _lastSwingHigh || (price + atr * 1.5);
+
+  const distLong  = Math.abs(price - slLong);
+  const distShort = Math.abs(price - slShort);
+
+  const sizeLong  = distLong  > 0 ? riskAmt / distLong  : 0;
+  const sizeShort = distShort > 0 ? riskAmt / distShort : 0;
+
+  const tp1Long  = price + distLong  * 2;
+  const tp1Short = price - distShort * 2;
+
+  const rbLong  = distLong  > 0 ? (distLong  * 2 / distLong).toFixed(1)  : '—';
+  const rbShort = distShort > 0 ? (distShort * 2 / distShort).toFixed(1) : '—';
+
+  // Show based on signal direction or default to LONG
+  const dir = _lastSignalDir || 'LONG';
+  const isLong = dir === 'LONG';
+
+  document.getElementById('pl-entry').textContent = '$' + price.toFixed(0);
+  document.getElementById('pl-sl').textContent    = '$' + (isLong ? slLong  : slShort).toFixed(0);
+  document.getElementById('pl-tp1').textContent   = '$' + (isLong ? tp1Long : tp1Short).toFixed(0);
+  document.getElementById('pl-size').textContent  = (isLong ? sizeLong : sizeShort).toFixed(4) + ' BTC';
+  document.getElementById('pl-risk').textContent  = '-$' + riskAmt.toFixed(2);
+  document.getElementById('pl-rb').textContent    = '1:' + (isLong ? rbLong : rbShort);
+}
+
+// Global vars to share data with proto panel
+let _lastATR       = null;
+let _lastSwingHigh = null;
+let _lastSwingLow  = null;
+let _lastSignalDir = null;
+let _lastCertPct   = 0;
+let lastMissedSignal = null;
+
+function protoExec(side) {
+  if (!apiEnabled) { alert('Conectá la API primero'); return; }
+  const allOk = protoChecks.every(Boolean);
+  const price  = prevPrice;
+  if (!price) return;
+
+  const cap     = parseFloat(document.getElementById('proto-capital').value) || 1000;
+  const riskAmt = cap * (protoRisk / 100);
+  const atr     = _lastATR || price * 0.003;
+  const isLong  = side === 'BUY';
+
+  const sl  = isLong
+    ? (_lastSwingLow  || price - atr * 1.5)
+    : (_lastSwingHigh || price + atr * 1.5);
+  const dist = Math.abs(price - sl);
+  const qty  = dist > 0 ? (riskAmt / dist) : 0;
+  const tp1  = isLong ? price + dist * 2 : price - dist * 2;
+  const rb   = dist > 0 ? (dist * 2 / dist).toFixed(1) : '—';
+
+  // Populate confirm modal
+  pendingExecSide = side;
+  const dirLabel = isLong ? '▲ LONG' : '▼ SHORT';
+  const dirColor = isLong ? 'var(--green)' : 'var(--red2)';
+
+  document.getElementById('confirm-title').textContent = dirLabel + ' · CONFIRMAR';
+  document.getElementById('confirm-title').style.color = dirColor;
+  document.getElementById('cf-dir').textContent   = dirLabel;
+  document.getElementById('cf-dir').style.color   = dirColor;
+  document.getElementById('cf-entry').textContent = '$' + price.toFixed(0);
+  document.getElementById('cf-sl').textContent    = '$' + sl.toFixed(0);
+  document.getElementById('cf-tp1').textContent   = '$' + tp1.toFixed(0);
+  document.getElementById('cf-size').textContent  = qty.toFixed(4) + ' BTC';
+  document.getElementById('cf-risk').textContent  = '-$' + riskAmt.toFixed(2);
+  document.getElementById('cf-rb').textContent    = '1:' + rb;
+  document.getElementById('cf-cert').textContent  = _lastCertPct + '%';
+
+  const okBtn = document.getElementById('confirm-ok-btn');
+  okBtn.textContent = `⚡ EJECUTAR ${isLong ? 'LONG' : 'SHORT'}`;
+  okBtn.className   = isLong ? 'confirm-ok-long' : 'confirm-ok-short';
+
+  // Warn if checklist incomplete
+  const clWarn = document.getElementById('confirm-cl-warn');
+  if (!allOk) {
+    const missing = ['Sin noticias <60min','EMA200 1H confirmada','Capital calculado','Enfocado','SL y TP definidos']
+      .filter((_, i) => !protoChecks[i]);
+    clWarn.style.display = 'block';
+    clWarn.innerHTML = '⚠️ Checklist incompleto:<br>' + missing.map(m => '· ' + m).join('<br>');
+  } else {
+    clWarn.style.display = 'none';
+  }
+
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+function closeConfirm(e) {
+  if (e && e.target !== document.getElementById('confirm-overlay')) return;
+  document.getElementById('confirm-overlay').classList.remove('open');
+  pendingExecSide = null;
+}
+
+async function confirmExec() {
+  if (!pendingExecSide) return;
+  document.getElementById('confirm-overlay').classList.remove('open');
+
+  const side    = pendingExecSide;
+  const price   = prevPrice;
+  const cap     = parseFloat(document.getElementById('proto-capital').value) || 1000;
+  const riskAmt = cap * (protoRisk / 100);
+  const atr     = _lastATR || price * 0.003;
+  const isLong  = side === 'BUY';
+
+  const sl  = isLong
+    ? (_lastSwingLow  || price - atr * 1.5)
+    : (_lastSwingHigh || price + atr * 1.5);
+  const dist = Math.abs(price - sl);
+  const qty  = (dist > 0 ? riskAmt / dist : 0).toFixed(4);
+
+  // Use existing openPosition but override size
+  const savedCapital = CAPITAL;
+  try {
+    document.getElementById('proto-exec-info').textContent = '⏳ Enviando orden a Binance...';
+    await setLeverage();
+
+    const order = await binancePrivate('POST', '/fapi/v1/order', {
+      symbol: SYMBOL, side, type: 'MARKET',
+      quantity: qty, positionSide: 'BOTH'
+    });
+
+    const entryPrice = parseFloat(order.avgPrice) || price;
+    const realDist   = Math.abs(entryPrice - sl);
+    const tp1 = isLong ? entryPrice + realDist * 2 : entryPrice - realDist * 2;
+    const oppSide = isLong ? 'SELL' : 'BUY';
+
+    // Place SL
+    let slOk = false;
+    const slAttempts = [
+      ['/fapi/v1/algoOrder', { symbol:SYMBOL, side:oppSide, algoType:'CONDITIONAL', type:'STOP_MARKET', triggerPrice:sl.toFixed(2), quantity:qty, reduceOnly:'true', workingType:'MARK_PRICE', priceProtect:'TRUE' }],
+      ['/fapi/v1/order',     { symbol:SYMBOL, side:oppSide, type:'STOP_MARKET', stopPrice:sl.toFixed(2), closePosition:'true', workingType:'MARK_PRICE' }],
+    ];
+    for (const [ep, p] of slAttempts) {
+      try { const r = await binancePrivate('POST', ep, p); if (r.orderId||r.algoId){ slOk=true; break; } } catch {}
+    }
+
+    // Place TP
+    let tpOk = false;
+    const tpAttempts = [
+      ['/fapi/v1/algoOrder', { symbol:SYMBOL, side:oppSide, algoType:'CONDITIONAL', type:'TAKE_PROFIT_MARKET', triggerPrice:tp1.toFixed(2), quantity:qty, reduceOnly:'true', workingType:'MARK_PRICE', priceProtect:'TRUE' }],
+      ['/fapi/v1/order',     { symbol:SYMBOL, side:oppSide, type:'TAKE_PROFIT_MARKET', stopPrice:tp1.toFixed(2), closePosition:'true', workingType:'MARK_PRICE' }],
+    ];
+    for (const [ep, p] of tpAttempts) {
+      try { const r = await binancePrivate('POST', ep, p); if (r.orderId||r.algoId){ tpOk=true; break; } } catch {}
+    }
+
+    activePosition = {
+      side, entryPrice, qty: parseFloat(qty), sl, tp1,
+      orderId: order.orderId,
+      slOnBinance: slOk, tpOnBinance: tpOk,
+      openTime: Date.now(),
+      monitorNote: `Protocolo · ${slOk?'✅ SL':'⚠️ SL manual'} · ${tpOk?'✅ TP':'⚠️ TP manual'}`
+    };
+
+    saveState(STATE);
+    updatePositionUI(entryPrice);
+    playSignalAlert(isLong);
+    vibrate([200,100,200,100,400]);
+    showNotif('BTC · Orden Protocolo ✅', `${isLong?'LONG':'SHORT'} @ $${entryPrice.toFixed(0)} · SL:$${sl.toFixed(0)} · TP:$${tp1.toFixed(0)}`);
+
+    document.getElementById('proto-exec-info').innerHTML =
+      `✅ ${isLong?'LONG':'SHORT'} abierto @ $${entryPrice.toFixed(0)} · SL:$${sl.toFixed(0)} · TP:$${tp1.toFixed(0)}`;
+    updateProtoButtons(protoChecks.every(Boolean));
+
+  } catch(e) {
+    document.getElementById('proto-exec-info').innerHTML = `❌ Error: ${e.message}`;
+    alert('Error ejecutando orden:\n' + e.message);
+  }
+  pendingExecSide = null;
+}
+
+// Init proto panel
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('proto-body').classList.add('open');
+  updateProtoScore();
+  loadBybitProfiles();
+  updateBybitIndicator();
+  // Auto-connect bybit if profiles saved
+  const anyBybit = ['casa','gym','trabajo','celular'].find(p => BYBIT_PROFILES[p].key !== '');
+  if (anyBybit) switchBybitProfile(anyBybit);
+});
+
+// ─── EXCHANGE SELECTOR ─────────────────────────────────
+let activeExchange = 'binance'; // 'binance' or 'bybit'
+
+function setExchange(ex) {
+  activeExchange = ex;
+  const binBtn = document.getElementById('exch-binance');
+  const bybBtn = document.getElementById('exch-bybit');
+  if (ex === 'binance') {
+    binBtn.style.borderColor = 'var(--green)';
+    binBtn.style.background  = 'rgba(0,230,118,0.12)';
+    binBtn.style.color       = 'var(--green)';
+    bybBtn.style.borderColor = 'var(--border)';
+    bybBtn.style.background  = 'var(--bg)';
+    bybBtn.style.color       = 'var(--muted)';
+  } else {
+    bybBtn.style.borderColor = '#f7931a';
+    bybBtn.style.background  = 'rgba(247,147,26,0.12)';
+    bybBtn.style.color       = '#f7931a';
+    binBtn.style.borderColor = 'var(--border)';
+    binBtn.style.background  = 'var(--bg)';
+    binBtn.style.color       = 'var(--muted)';
+    // Open bybit modal if not connected
+    if (!bybitEnabled) {
+      document.getElementById('bybit-modal').style.display = 'flex';
+    }
+  }
+  updateProtoButtons(protoChecks.every(Boolean));
+}
+
+// Override confirmExec to route to correct exchange
+const _origConfirmExec = confirmExec;
+confirmExec = async function() {
+  if (!pendingExecSide) return;
+  document.getElementById('confirm-overlay').classList.remove('open');
+
+  const side    = pendingExecSide;
+  const price   = prevPrice;
+  const cap     = parseFloat(document.getElementById('proto-capital').value) || 1000;
+  const riskAmt = cap * (protoRisk / 100);
+  const atr     = _lastATR || price * 0.003;
+  const isLong  = side === 'BUY';
+  const sl      = isLong ? (_lastSwingLow || price - atr*1.5) : (_lastSwingHigh || price + atr*1.5);
+  const dist    = Math.abs(price - sl);
+  const qty     = (dist > 0 ? riskAmt / dist : 0).toFixed(4);
+  const tp1     = isLong ? price + dist * 2 : price - dist * 2;
+
+  if (activeExchange === 'bybit') {
+    if (!bybitEnabled) { alert('Conectá Bybit primero'); pendingExecSide=null; return; }
+    try {
+      await bybitExecOrder(side, qty, sl, tp1);
+    } catch(e) {
+      document.getElementById('proto-exec-info').innerHTML = `❌ Bybit Error: ${e.message}`;
+      alert('Error Bybit:\n' + e.message);
+    }
+  } else {
+    if (!apiEnabled) { alert('Conectá Binance primero'); pendingExecSide=null; return; }
+    try {
+      document.getElementById('proto-exec-info').textContent = '⏳ Enviando orden a Binance...';
+      await setLeverage();
+      const order = await binancePrivate('POST', '/fapi/v1/order', {
+        symbol: SYMBOL, side, type: 'MARKET', quantity: qty, positionSide: 'BOTH'
+      });
+      const entryPrice = parseFloat(order.avgPrice) || price;
+      const realDist   = Math.abs(entryPrice - sl);
+      const realTP1    = isLong ? entryPrice + realDist * 2 : entryPrice - realDist * 2;
+      const oppSide    = isLong ? 'SELL' : 'BUY';
+      let slOk = false, tpOk = false;
+      const slA = [['/fapi/v1/algoOrder',{symbol:SYMBOL,side:oppSide,algoType:'CONDITIONAL',type:'STOP_MARKET',triggerPrice:sl.toFixed(2),quantity:qty,reduceOnly:'true',workingType:'MARK_PRICE',priceProtect:'TRUE'}],['/fapi/v1/order',{symbol:SYMBOL,side:oppSide,type:'STOP_MARKET',stopPrice:sl.toFixed(2),closePosition:'true',workingType:'MARK_PRICE'}]];
+      for (const [ep,p] of slA) { try { const r=await binancePrivate('POST',ep,p); if(r.orderId||r.algoId){slOk=true;break;} } catch {} }
+      const tpA = [['/fapi/v1/algoOrder',{symbol:SYMBOL,side:oppSide,algoType:'CONDITIONAL',type:'TAKE_PROFIT_MARKET',triggerPrice:realTP1.toFixed(2),quantity:qty,reduceOnly:'true',workingType:'MARK_PRICE',priceProtect:'TRUE'}],['/fapi/v1/order',{symbol:SYMBOL,side:oppSide,type:'TAKE_PROFIT_MARKET',stopPrice:realTP1.toFixed(2),closePosition:'true',workingType:'MARK_PRICE'}]];
+      for (const [ep,p] of tpA) { try { const r=await binancePrivate('POST',ep,p); if(r.orderId||r.algoId){tpOk=true;break;} } catch {} }
+      activePosition = { side, entryPrice, qty: parseFloat(qty), sl, tp1: realTP1, orderId: order.orderId, slOnBinance: slOk, tpOnBinance: tpOk, openTime: Date.now(), monitorNote: `Binance Protocolo · ${slOk?'✅ SL':'⚠️ SL manual'} · ${tpOk?'✅ TP':'⚠️ TP manual'}` };
+      saveState(STATE); updatePositionUI(entryPrice); playSignalAlert(isLong); vibrate([200,100,200,100,400]);
+      showNotif('Binance · Orden ✅', `${isLong?'LONG':'SHORT'} @ $${entryPrice.toFixed(0)}`);
+      document.getElementById('proto-exec-info').innerHTML = `✅ Binance ${isLong?'LONG':'SHORT'} @ $${entryPrice.toFixed(0)} · SL:$${sl.toFixed(0)} · TP:$${realTP1.toFixed(0)}`;
+      updateProtoButtons(protoChecks.every(Boolean));
+    } catch(e) {
+      document.getElementById('proto-exec-info').innerHTML = `❌ Error: ${e.message}`;
+      alert('Error Binance:\n' + e.message);
+    }
+  }
+  pendingExecSide = null;
+};
+
+// ─── INIT ──────────────────────────────────────────────
+function startCountdown(){
+  countdown = 0;
+  // El countdown ahora lo maneja el WS (tiempo hasta cierre de vela)
+  // Solo reseteamos el display
+  const sb = document.getElementById('sb-next');
+  if (sb) sb.textContent = '—';
+}
+
+async function init(){
+  // Arrancar los 3 WebSockets en paralelo
+  connectWs5m();
+  connectWs15m();
+  connectWsTicker();
+}
+function exportConfig() {
+  const cfg = JSON.stringify({theoryWeights:STATE.theoryWeights,theoryStats:STATE.theoryStats,wins:STATE.wins,losses:STATE.losses,date:new Date().toISOString()});
+  if(navigator.clipboard){navigator.clipboard.writeText(cfg).then(()=>alert('Config copiada. Guardala para restaurar el aprendizaje.'));}
+  else{prompt('Copiá y guardá:',cfg);}
+}
+// Auto-sync Binance positions every 15 seconds
+setInterval(() => {
+  if (apiEnabled) syncBinancePositions();
+}, 15000);
+
+// ─── STARTUP ───────────────────────────────────────────
+// init() corre DENTRO de window.load para evitar que el modal
+// aparezca antes de que el dashboard cargue los datos
+window.addEventListener('load', () => {
+  // 1. Perfiles Bybit
+  loadBybitProfiles();
+  updateBybitIndicator();
+  const anyBybit = ['casa','gym','trabajo','celular'].find(p => BYBIT_PROFILES[p].key !== '');
+  if (anyBybit) switchBybitProfile(anyBybit);
+
+  // 2. Leer keys de Binance guardadas
+  let hasSavedKeys = false;
+  try {
+    const k = localStorage.getItem('btc_binance_key');
+    const s = localStorage.getItem('btc_binance_secret');
+    if (k && s) {
+      API_KEY    = atob(k);
+      API_SECRET = atob(s);
+      apiEnabled = true;
+      hasSavedKeys = true;
+      updateApiIndicator();
+    }
+  } catch {}
+
+  // 3. Arrancar dashboard PRIMERO — siempre usa API pública para los datos de precio
+  init();
+
+  // 4. En background: verificar conexión privada o activar modo público
+  if (hasSavedKeys) {
+    // Verificar keys 2s después de que el dashboard ya cargó
+    setTimeout(() => testConnection(), 2000);
+  } else {
+    // Sin keys → modo público, modal aparece DESPUÉS de que carguen los datos (4s)
+    // Solo si los datos no cargaron aún
+    fallbackToPublicApi();
+    setTimeout(() => {
+      const content = document.getElementById('main-content');
+      // Solo mostrar modal si el contenido no cargó todavía
+      if (content && content.style.display !== 'block') {
+        document.getElementById('api-modal').style.display = 'flex';
+      }
+    }, 4000);
+  }
+});
+</script>
+</body>
+</html>
